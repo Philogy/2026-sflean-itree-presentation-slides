@@ -18,7 +18,11 @@ open _slides/index.html
 ## Layout
 
 - `Talk.lean` — the deck itself (`#doc (Slides) ...`), one `#` heading per slide.
-- `Main.lean` — entry point; `slidesMain` with theme/transition config.
+- `Main.lean` — entry point; `slidesMain`, then post-processes `_slides/`
+  (custom CSS, header rule, title slide, `disableLayout`, inlined hover
+  docs so the deck works from `file://`).
+- `static/` — `custom.css`, adapted from Leo de Moura's
+  [ETAPSTutorial2026](https://github.com/leodemoura/ETAPSTutorial2026) deck.
 - `lakefile.lean` — package config; depends on `verso-slides`.
 - `lean-toolchain` — pinned to `leanprover/lean4:v4.36.0-rc1` (matches the
   `verso-slides` tag).

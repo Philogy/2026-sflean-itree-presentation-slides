@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 7 214 141" role="img" aria-label="An interaction tree">
+  <defs>
+    <linearGradient id="fade-down" gradientUnits="userSpaceOnUse" x1="0" y1="92" x2="0" y2="146">
+      <stop offset="0" stop-color="#905E43"/>
+      <stop offset="1" stop-color="#905E43" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#905E43" stroke-width="3" stroke-linecap="round" fill="none">
+    <!-- vis: one edge per answer -->
+    <path d="M130 20 L52 72 M130 20 L130 72 M130 20 L208 72"/>
+    <!-- tau chain, then spin -->
+    <path d="M130 72 L130 106"/>
+    <path d="M130 106 L130 146" stroke="url(#fade-down)" stroke-dasharray="2 7"/>
+    <!-- nested vis fanning out without end -->
+    <path d="M208 72 L176 116 M208 72 L208 120 M208 72 L240 116" stroke="url(#fade-down)"/>
+    <path d="M176 116 L166 132 M240 116 L250 132" stroke="url(#fade-down)" stroke-dasharray="2 7"/>
+  </g>
+  <!-- vis nodes -->
+  <circle cx="130" cy="20" r="11" fill="#905E43"/>
+  <circle cx="208" cy="72" r="9" fill="#905E43"/>
+  <!-- tau nodes -->
+  <circle cx="130" cy="72" r="7" fill="#E9E0D7" stroke="#905E43" stroke-width="3"/>
+  <circle cx="130" cy="106" r="7" fill="#E9E0D7" stroke="#905E43" stroke-width="3"/>
+  <!-- ret leaf -->
+  <rect x="42" y="62" width="20" height="20" rx="3" fill="#EBD5C0" stroke="#905E43" stroke-width="3"/>
+</svg>

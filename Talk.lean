@@ -1,17 +1,85 @@
-import VersoSlides
+module
+public import VersoSlides
 
 open VersoSlides
 
 set_option verso.code.warnLineLength 500
+set_option linter.unusedVariables false
 
-#doc (Slides) "Interaction Trees in Lean 4" =>
+#doc (Slides) "Representing Non-Terminating Computation using iTrees" =>
 
-# Fuel vs. Relational Semantics
+# What do we need to verify Real World Software?
 
-* Fuel: `eval : Nat → Prog → Option Result` (runs, but "out of fuel" is not divergence)
-* Relational: `Prog → Result → Prop` (precise, but you can't run it)
+* A Piece of Real World Software
+* {fragment (style := embolden)}[A Language Specification]
+* A Behavioral Specification
 
-# ITrees: `ret`, `tau`, `vis`
+# Real Languages are Messy
+
+* Effects
+```code rust
+let config = fs::read_to_string("config.toml")?;
+fs::write("config.bak", &config)?;
+```
+
+* Non-Termination
+
+```code rust
+#[tokio::main]
+async fn main() -> ! {
+    loop {
+        let request = next_connection().await;
+        respond(request).await;
+    }
+}
+```
+
+* Non-Determinism and Undefined Behavior
+```code rust
+let layout = Layout::from_size_align(size_of::<u32>(), align_of::<u32>()).unwrap();
+let p = unsafe { alloc(layout) } as *mut u32;
+unsafe { *p.add(1) = 2 }; // UB: out of bounds
+```
+
+
+# Formalized Language Semantics: The Obvious Ways
+
+:::table +colHeaders +rowHeaders +stripedRows +headerSep
+*
+  *
+  * Fueled Interpreter
+  * Big-Step Relation
+  * Small-step relation
+*
+  * Shape
+  * `eval : Nat → Prog → Option Val`
+  * `inductive Eval : Prog → Val → Prop`
+  * `inductive Step : Cfg → Cfg → Prop`
+*
+  * Executable?
+  * ✅
+  * ❌
+  * ❌
+*
+  * Non-termination
+  * Confused with "out of fuel"
+  * Invisible (no derivation)
+  * Infinite step chain
+*
+  * Effects & I/O
+  * Ad hoc
+  * Awkward
+  * Labelled transitions
+*
+  * Proof style
+  * Fuel lemmas everywhere
+  * Induction on derivations
+  * Simulation diagrams
+:::
+
+
+
+# Monad Instance and `#eval`
 
 ```lean
 inductive Step (E : Type → Type) (R X : Type) : Type 1 where
@@ -29,8 +97,6 @@ def ITree.spin : ITree E R := ⟨Unit, (), fun _ => .tau ()⟩
 ```
 
 * Placeholder: infinite behaviour as a value, effects as an open signature `E`
-
-# Monad Instance and `#eval`
 
 ```lean
 inductive Out : Type → Type where
