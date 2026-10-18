@@ -25,21 +25,105 @@ fs::write("config.bak", &config)?;
 * Non-Termination
 
 ```code rust
-#[tokio::main]
-async fn main() -> ! {
-    loop {
-        let request = next_connection().await;
-        respond(request).await;
-    }
+loop {
+    let request = next_connection().await;
+    respond(request).await;
 }
 ```
 
 * Non-Determinism and Undefined Behavior
 ```code rust
-let layout = Layout::from_size_align(size_of::<u32>(), align_of::<u32>()).unwrap();
-let p = unsafe { alloc(layout) } as *mut u32;
-unsafe { *p.add(1) = 2 }; // UB: out of bounds
+let mut x = Box::new(0u32);
+unsafe { *Box::as_mut_ptr(&mut x).add(1) = 2 }; // UB: out of bounds
 ```
+
+# Our Toy Language
+
+:::class "big-code"
+```code haskell
+e ::= n | x | e + e | e - e | e < e
+    | load e | alloc e                -- alloc: any free address
+    | read                            -- effect: external input
+
+s ::= skip | x := e | let x := e in s | s ; s
+    | if e then s else s | while e do s
+    | store e e | print e             -- effects
+```
+:::
+
+:::class "big-code"
+```code haskell
+n := read;
+let p := alloc 0 in
+while 0 < n do
+  store p (load p + n);
+  print (load p);
+  n := n - 1
+```
+:::
+
+# Fueled Interpreter
+
+:::class "big-code"
+```code haskell
+def exec : (fuel : Nat) → (input : Trace → Nat)
+         → Stmt → State
+         → Result State × Trace
+
+| 0,   _,   s,           σ => (outOfFuel, [])     -- diverged? or unlucky?
+| n+1, inp, while c s,   σ => if ⟦c⟧σ ≠ 0 then exec n inp (s ; while c s) σ …
+| n+1, inp, x := read,   σ => let v := inp trace …   -- the world, pre-seeded
+| n+1, inp, x := alloc e, σ => let ℓ := fresh σ …    -- one address, picked by us
+```
+:::
+
+* Out of fuel ≠ divergence: a server and a crash look alike
+* Nondeterminism must be resolved up front (oracles, `fresh`)
+
+# Relational Big-Step
+
+:::class "big-code"
+```code haskell
+inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩ ⇓ ⟨σ', t⟩
+```
+:::
+
+:::class "big-code"
+```code haskell
+⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩        ⟨e, σ⟩ ⇓ v    σ.heap ℓ = none
+──────────────────────────────────────        ───────────────────────────────────────
+     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := alloc e, σ⟩ ⇓ ⟨σ[ℓ ↦ v][x ↦ ℓ], []⟩
+
+                         ───────────────────────────────────
+                          ⟨x := read, σ⟩ ⇓ ⟨σ[x ↦ v], [in v]⟩
+```
+:::
+
+* Nondeterminism is free: any `ℓ`, any `v`
+* `while true do print 1` has *no* derivation: the server is a no-op
+* Fix: a second, coinductive judgment `⟨s, σ⟩ ⇑ T`, duplicating every rule
+
+# Small-Step
+
+:::class "big-code"
+```code haskell
+abbrev Cfg := Stmt × State                          -- the program is part of the config
+inductive Step  : Cfg → Option Event → Cfg → Prop   -- none = silent τ step
+inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
+```
+:::
+
+:::class "big-code"
+```code haskell
+⟨while c s, σ⟩  ─τ→      ⟨if c then (s ; while c s) else skip, σ⟩
+⟨print e, σ⟩    ─out v→  ⟨skip, σ⟩                    if ⟦e⟧σ = v
+⟨s₁ ; s₂, σ⟩    ─ℓ→      ⟨s₁' ; s₂, σ'⟩               if ⟨s₁, σ⟩ ─ℓ→ ⟨s₁', σ'⟩
+```
+:::
+
+* Infinite runs are infinite chains: the server finally exists
+* Price: congruence rules everywhere, simulation diagrams up to τ
+
 
 
 # Formalized Language Semantics: The Obvious Ways
@@ -52,9 +136,9 @@ unsafe { *p.add(1) = 2 }; // UB: out of bounds
   * Small-step relation
 *
   * Shape
-  * `eval : Nat → Prog → Option Val`
-  * `inductive Eval : Prog → Val → Prop`
-  * `inductive Step : Cfg → Cfg → Prop`
+  * `eval : Nat → Oracles → Prog → Result (Val × Trace)`
+  * `inductive Eval : Prog → Trace → Val → Prop`
+  * `inductive Step : Cfg → Event → Cfg → Prop`
 *
   * Executable?
   * ✅
@@ -76,7 +160,6 @@ unsafe { *p.add(1) = 2 }; // UB: out of bounds
   * Induction on derivations
   * Simulation diagrams
 :::
-
 
 
 # Monad Instance and `#eval`

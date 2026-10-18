@@ -505,3 +505,15 @@
   width: 95%;
   max-width: 95%;
 }
+
+.reveal .slides pre.big-code {
+  font-size: 0.75em;
+}
+
+/* highlight.js (non-Lean blocks) in the Gruvbox-light palette used for Lean */
+.reveal pre code.hljs { color: #3c3836; }
+.reveal .hljs-keyword, .reveal .hljs-built_in, .reveal .hljs-meta { color: #905E43; font-weight: 600; }
+.reveal .hljs-type, .reveal .hljs-title, .reveal .hljs-title.class_ { color: #8f3f71; }
+.reveal .hljs-number, .reveal .hljs-string, .reveal .hljs-literal { color: #af3a03; }
+.reveal .hljs-comment { color: #7c6f64; font-style: italic; }
+.reveal .hljs-title.function_, .reveal .hljs-variable, .reveal .hljs-symbol { color: #076678; }
