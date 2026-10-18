@@ -66,6 +66,8 @@ while 0 < n do
 ```
 :::
 
+# Semantics: What Does it Mean to *Run* Our Program
+
 # Fueled Interpreter
 
 :::class "big-code"
@@ -95,8 +97,8 @@ inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩
 :::class "big-code"
 ```code toy
 ⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩        ⟨e, σ⟩ ⇓ v    σ.heap ℓ = none
-──────────────────────────────────────        ───────────────────────────────────────
-     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := ref e, σ⟩ ⇓ ⟨σ[ℓ ↦ v][x ↦ ℓ], []⟩
+──────────────────────────────────────        ────────────────────────────────────────
+     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := ref e, σ⟩ ⇓ ⟨σ[ℓ ↦ₕ v][x ↦ ℓ], []⟩
 
                          ───────────────────────────────────
                           ⟨x := read, σ⟩ ⇓ ⟨σ[x ↦ v], [in v]⟩
