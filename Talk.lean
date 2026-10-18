@@ -34,15 +34,17 @@ loop {
 * Non-Determinism and Undefined Behavior
 ```code rust
 let mut x = Box::new(0u32);
-unsafe { *Box::as_mut_ptr(&mut x).add(1) = 2 }; // UB: out of bounds
+unsafe { *Box::as_mut_ptr(&mut x).add(1) = 2 };
 ```
 
 # Our Toy Language
 
+*Definition*
+
 :::class "big-code"
 ```code toy
 e ::= n | x | e + e | e - e | e < e
-    | load e | alloc e                -- alloc: any free address
+    | ref e | deref e                 -- create & lookup a reference
     | read                            -- effect: external input
 
 s ::= skip | x := e | let x := e in s | s ; s
@@ -51,13 +53,15 @@ s ::= skip | x := e | let x := e in s | s ; s
 ```
 :::
 
+*Example Program*
+
 :::class "big-code"
 ```code toy
 n := read;
-let p := alloc 0 in
+let p := ref 0 in
 while 0 < n do
-  store p (load p + n);
-  print (load p);
+  store p (deref p + n);
+  print (deref p);
   n := n - 1
 ```
 :::
@@ -73,7 +77,7 @@ def exec : (fuel : Nat) → (input : Trace → Nat)
 | 0,   _,   s,           σ => (outOfFuel, [])     -- diverged? or unlucky?
 | n+1, inp, while c s,   σ => if ⟦c⟧σ ≠ 0 then exec n inp (s ; while c s) σ …
 | n+1, inp, x := read,   σ => let v := inp trace …   -- the world, pre-seeded
-| n+1, inp, x := alloc e, σ => let ℓ := fresh σ …    -- one address, picked by us
+| n+1, inp, x := ref e,  σ => let ℓ := fresh σ …     -- one address, picked by us
 ```
 :::
 
@@ -92,7 +96,7 @@ inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩
 ```code toy
 ⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩        ⟨e, σ⟩ ⇓ v    σ.heap ℓ = none
 ──────────────────────────────────────        ───────────────────────────────────────
-     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := alloc e, σ⟩ ⇓ ⟨σ[ℓ ↦ v][x ↦ ℓ], []⟩
+     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := ref e, σ⟩ ⇓ ⟨σ[ℓ ↦ v][x ↦ ℓ], []⟩
 
                          ───────────────────────────────────
                           ⟨x := read, σ⟩ ⇓ ⟨σ[x ↦ v], [in v]⟩
@@ -134,11 +138,6 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
   * Fueled Interpreter
   * Big-Step Relation
   * Small-step relation
-*
-  * Shape
-  * `eval : Nat → Oracles → Prog → Result (Val × Trace)`
-  * `inductive Eval : Prog → Trace → Val → Prop`
-  * `inductive Step : Cfg → Event → Cfg → Prop`
 *
   * Executable?
   * ✅
