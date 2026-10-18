@@ -40,7 +40,7 @@ unsafe { *Box::as_mut_ptr(&mut x).add(1) = 2 }; // UB: out of bounds
 # Our Toy Language
 
 :::class "big-code"
-```code haskell
+```code toy
 e ::= n | x | e + e | e - e | e < e
     | load e | alloc e                -- alloc: any free address
     | read                            -- effect: external input
@@ -52,7 +52,7 @@ s ::= skip | x := e | let x := e in s | s ; s
 :::
 
 :::class "big-code"
-```code haskell
+```code toy
 n := read;
 let p := alloc 0 in
 while 0 < n do
@@ -65,7 +65,7 @@ while 0 < n do
 # Fueled Interpreter
 
 :::class "big-code"
-```code haskell
+```code toy
 def exec : (fuel : Nat) → (input : Trace → Nat)
          → Stmt → State
          → Result State × Trace
@@ -83,13 +83,13 @@ def exec : (fuel : Nat) → (input : Trace → Nat)
 # Relational Big-Step
 
 :::class "big-code"
-```code haskell
+```code toy
 inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩ ⇓ ⟨σ', t⟩
 ```
 :::
 
 :::class "big-code"
-```code haskell
+```code toy
 ⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩        ⟨e, σ⟩ ⇓ v    σ.heap ℓ = none
 ──────────────────────────────────────        ───────────────────────────────────────
      ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := alloc e, σ⟩ ⇓ ⟨σ[ℓ ↦ v][x ↦ ℓ], []⟩
@@ -106,7 +106,7 @@ inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩
 # Small-Step
 
 :::class "big-code"
-```code haskell
+```code toy
 abbrev Cfg := Stmt × State                          -- the program is part of the config
 inductive Step  : Cfg → Option Event → Cfg → Prop   -- none = silent τ step
 inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
@@ -114,7 +114,7 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 :::
 
 :::class "big-code"
-```code haskell
+```code toy
 ⟨while c s, σ⟩  ─τ→      ⟨if c then (s ; while c s) else skip, σ⟩
 ⟨print e, σ⟩    ─out v→  ⟨skip, σ⟩                    if ⟦e⟧σ = v
 ⟨s₁ ; s₂, σ⟩    ─ℓ→      ⟨s₁' ; s₂, σ'⟩               if ⟨s₁, σ⟩ ─ℓ→ ⟨s₁', σ'⟩

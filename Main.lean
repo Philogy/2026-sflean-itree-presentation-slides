@@ -30,6 +30,8 @@ public def main : IO UInt32 := do
   let html := html.replace "</head>" "<link rel=\"stylesheet\" href=\"custom.css\"></head>"
   -- custom.css sizes slides with vh/vw, so reveal.js must not scale them.
   let html := html.replace "Reveal.initialize({" "Reveal.initialize({\n        disableLayout: true,"
+  -- Registered before `Reveal.initialize`, which runs the highlight plugin.
+  let html := html.replace "Reveal.initialize({" ((← IO.FS.readFile ("static" / "toy-hljs.js")) ++ "Reveal.initialize({")
   -- Slides with attributes (e.g. a background colour) are left without the header.
   let html := html.replace "<section>" s!"<section>{slideHeader}"
   let html := html.replace "<div class=\"slides\">" s!"<div class=\"slides\">{titleSlide}"
