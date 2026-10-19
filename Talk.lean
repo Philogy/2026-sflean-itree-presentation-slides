@@ -86,74 +86,68 @@ structure State where
   next  : Nat := 0
   reads : Nat := 0
   trace : Trace := []
+
+def State.set (σ : State) (x v : Nat) : State :=
+  { σ with vars := fun y => if y = x then some v else σ.vars y }
+def State.input (σ : State) (x v : Nat) : State :=
+  { (σ.set x v) with reads := σ.reads + 1, trace := σ.trace ++ [.input v] }
+def State.alloc (σ : State) (x n : Nat) : State :=   -- bump-allocate `n` zeroed cells
+  let τ := σ.set x σ.next
+  { τ with next := σ.next + n,
+           heap := fun a => if σ.next ≤ a ∧ a < σ.next + n then some 0 else σ.heap a }
+def State.allocated (σ : State) (a : Nat) : Bool := (σ.heap a).isSome
+def State.store (σ : State) (a v : Nat) : State :=
+  { σ with heap := fun b => if b = a then some v else σ.heap b }
+def State.print (σ : State) (v : Nat) : State := { σ with trace := σ.trace ++ [.output v] }
 ```
 
 
 :::class "big-code"
 ```lean
 inductive Error where | ub | outOfFuel | invalidVar
-abbrev M := ReaderT Oracle (ExceptT Error (StateM State))
+
+def eval (σ : State) : Expr → Except Error Nat
 /- !hide -/
-def eval : Expr → M Nat
-  | .lit n   => pure n
-  | .add a b => return (← eval a) + (← eval b)
-  | .sub a b => return (← eval a) - (← eval b)
-  | .lt a b  => return if (← eval a) < (← eval b) then 1 else 0
-  | .var x   => do
-      let some v := (← get).vars x | throw .invalidVar
-      pure v
-  | .deref a => do
-      let some v := (← get).heap (← eval a) | throw .ub
-      pure v
-  | .read    => do   -- the world, pre-seeded
-      let o ← read; let s ← get
-      set { s with reads := s.reads + 1, trace := s.trace ++ [Event.input (o s.reads)] }
-      pure (o s.reads)
-  | .alloc n => do   -- one block, picked by us: bump-allocate `n` zeroed cells
-      let n ← eval n; let s ← get
-      set { s with next := s.next + n,
-                   heap := fun a => if s.next ≤ a ∧ a < s.next + n then some 0 else s.heap a }
-      pure s.next
-
-def allocated (a : Nat) : M Bool := return ((← get).heap a).isSome
-
-def write (a v : Nat) : M Unit :=
-  modify fun s => { s with heap := fun b => if b = a then some v else s.heap b }
-
-def finish : Except Error Unit × State → Trace × Option Error
-  | (.ok (),   s) => (s.trace, none)
-  | (.error e, s) => (s.trace, some e)
+  | .lit n    => pure n
+  | .var x    => match σ.vars x with | some v => pure v | none => throw .invalidVar
+  | .add a b  => return (← eval σ a) + (← eval σ b)
+  | .sub a b  => return (← eval σ a) - (← eval σ b)
+  | .lt a b   => return if (← eval σ a) < (← eval σ b) then 1 else 0
+  | .deref a  => do match σ.heap (← eval σ a) with | some v => pure v | none => throw .ub
+  | .read | .alloc _ => throw .ub   -- only allowed directly under `x := _`
 /- !end hide -/
-def run : (fuel : Nat) → Program → M Unit
-  | _,   []              => pure ()
-  | 0,   _               => throw .outOfFuel  -- diverged? or unlucky?
-  | n+1, .while c s :: p => do
-      if (← eval c) ≠ 0 then run n (s ++ .while c s :: p) else run n p
-  | n+1, .store a e :: p => do
-      let a ← eval a
-      unless (← allocated a) do throw .ub    -- UB, made explicit
-      write a (← eval e); run n p
+def exec (o : Oracle) (σ : State) : (fuel : Nat) → Program → Trace × Option Error
+  | 0, _ :: _ => (σ.trace, some .outOfFuel)  -- diverged? or unlucky?
+  | n+1, .while c s :: p => match eval σ c with
+    | .ok v    => exec o σ n (if v ≠ 0 then s ++ .while c s :: p else p)
+    | .error e => (σ.trace, some e)
+  | n+1, .assign x .read :: p => exec o (σ.input x (o σ.reads)) n p  -- pre-seeded
+  | n+1, .assign x (.alloc k) :: p => match eval σ k with  -- we pick the block
+    | .ok k    => exec o (σ.alloc x k) n p
+    | .error e => (σ.trace, some e)
+  | n+1, .store a v :: p => match eval σ a, eval σ v with
+    | .ok a, .ok v => if σ.allocated a then exec o (σ.store a v) n p
+                      else (σ.trace, some .ub)
+    | .error e, _ | _, .error e => (σ.trace, some e)
   /- !hide -/
-  | n+1, .assign x e :: p => do
-      let v ← eval e
-      modify fun s => { s with vars := fun y => if y = x then some v else s.vars y }
-      run n p
-  | n+1, .print e :: p => do
-      let v ← eval e
-      modify fun s => { s with trace := s.trace ++ [.output v] }
-      run n p
-  | n+1, .ifThenElse c z nz :: p => do
-      if (← eval c) = 0 then run n (z ++ p) else run n (nz ++ p)
+  | n+1, .assign x e :: p => match eval σ e with
+    | .ok v    => exec o (σ.set x v) n p
+    | .error e => (σ.trace, some e)
+  | n+1, .print e :: p => match eval σ e with
+    | .ok v    => exec o (σ.print v) n p
+    | .error e => (σ.trace, some e)
+  | n+1, .ifThenElse c z nz :: p => match eval σ c with
+    | .ok v    => exec o σ n ((if v = 0 then z else nz) ++ p)
+    | .error e => (σ.trace, some e)
+  | _,   []                   => (σ.trace, none)
   /- !end hide -/
-def exec (fuel : Nat) (o : Oracle) (p : Program) : Trace × Option Error :=
-  finish ((run fuel p).run o |>.run {})
 ```
 :::
 
 * Out of fuel ≠ divergence: a server and a crash look alike
 * Nondeterminism must be resolved up front (oracle, bump allocator)
 
-# Relational Big-Step (TODO)
+# Relational Big-Step
 
 :::class "big-code"
 ```code toy
