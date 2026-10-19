@@ -37,6 +37,24 @@ def outroSlide : IO String := do
 def slideHeader : String :=
   "<div class=\"slide-header\"></div>"
 
+def appendixSlide : String :=
+  let src (title href desc : String) :=
+    s!"<li><a href=\"{href}\">{title}</a><span class=\"desc\">{desc}</span></li>"
+  s!"<section>{slideHeader}<h2>Appendix: Sources</h2><ul class=\"sources\">" ++
+    src "Interaction Trees (Xia et al., POPL 2020)" "https://arxiv.org/abs/1906.00046"
+      "Coinductive free monad over events; eutt, interp, Coq library" ++
+    src "General Recursion via Coinductive Types (Capretta, LMCS 2005)" "https://arxiv.org/abs/cs/0505037"
+      "The delay monad: iTrees without events" ++
+    src "reilabs/freigen" "https://github.com/reilabs/freigen"
+      "Reilabs' Lean 4 iTree and effects library" ++
+    src "Lean 4 coinductive predicates (v4.25.0)" "https://lean-lang.org/doc/reference/latest/releases/v4.25.0"
+      "The coinductive command, lean4#10333" ++
+    src "leodemoura/ETAPSTutorial2026" "https://github.com/leodemoura/ETAPSTutorial2026"
+      "Slide look adapted from Leo de Moura's tutorial" ++
+    src "leanprover/verso-slides" "https://github.com/leanprover/verso-slides"
+      "Verso genre these slides are built with" ++
+    "</ul></section>"
+
 public def main : IO UInt32 := do
   let config : Config := { theme := "white", slideNumber := true, transition := "fade", center := false, margin := 0 }
   let rc ← slidesMain (config := config) (doc := %doc Talk)
@@ -54,7 +72,7 @@ public def main : IO UInt32 := do
   -- Slides with attributes (e.g. a background colour) are left without the header.
   let html := html.replace "<section>" s!"<section>{slideHeader}"
   let html := html.replace "<div class=\"slides\">" s!"<div class=\"slides\">{titleSlide}"
-  let html := html.replace "</section></div>" s!"</section>{← outroSlide}</div>"
+  let html := html.replace "</section></div>" s!"</section>{← outroSlide}{appendixSlide}</div>"
   IO.FS.writeFile htmlPath html
   -- Inline the hover docs: `fetch` fails when the deck is opened from `file://`.
   let docs ← IO.FS.readFile (out / "-verso-docs.json")
