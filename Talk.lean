@@ -89,16 +89,19 @@ structure State where
 
 def State.set (σ : State) (x v : Nat) : State :=
   { σ with vars := fun y => if y = x then some v else σ.vars y }
-def State.input (σ : State) (x v : Nat) : State :=
-  { (σ.set x v) with reads := σ.reads + 1, trace := σ.trace ++ [.input v] }
-def State.alloc (σ : State) (x n : Nat) : State :=   -- bump-allocate `n` zeroed cells
-  let τ := σ.set x σ.next
-  { τ with next := σ.next + n,
+def State.input (σ : State) (v : Nat) : State :=
+  { σ with reads := σ.reads + 1, trace := σ.trace ++ [.input v] }
+def State.alloc (σ : State) (n : Nat) : State :=   -- bump-allocate `n` zeroed cells
+  { σ with next := σ.next + n,
            heap := fun a => if σ.next ≤ a ∧ a < σ.next + n then some 0 else σ.heap a }
 def State.allocated (σ : State) (a : Nat) : Bool := (σ.heap a).isSome
 def State.store (σ : State) (a v : Nat) : State :=
   { σ with heap := fun b => if b = a then some v else σ.heap b }
 def State.print (σ : State) (v : Nat) : State := { σ with trace := σ.trace ++ [.output v] }
+-- on error, stop with the trace so far
+def Except.orStop (r : Except ε (Nat × State)) (σ : State)
+    (k : Nat → State → Trace × Option ε) : Trace × Option ε :=
+  match r with | .ok (v, σ') => k v σ' | .error e => (σ.trace, some e)
 ```
 
 
@@ -106,39 +109,32 @@ def State.print (σ : State) (v : Nat) : State := { σ with trace := σ.trace ++
 ```lean
 inductive Error where | ub | outOfFuel | invalidVar
 
-def eval (σ : State) : Expr → Except Error Nat
+def eval (o : Oracle) (σ : State) : Expr → Except Error (Nat × State)
 /- !hide -/
-  | .lit n    => pure n
-  | .var x    => match σ.vars x with | some v => pure v | none => throw .invalidVar
-  | .add a b  => return (← eval σ a) + (← eval σ b)
-  | .sub a b  => return (← eval σ a) - (← eval σ b)
-  | .lt a b   => return if (← eval σ a) < (← eval σ b) then 1 else 0
-  | .deref a  => do match σ.heap (← eval σ a) with | some v => pure v | none => throw .ub
-  | .read | .alloc _ => throw .ub   -- only allowed directly under `x := _`
+  | .lit n    => pure (n, σ)
+  | .var x    => match σ.vars x with | some v => pure (v, σ) | none => throw .invalidVar
+  | .add a b  => do let (a, σ) ← eval o σ a; let (b, σ) ← eval o σ b; pure (a + b, σ)
+  | .sub a b  => do let (a, σ) ← eval o σ a; let (b, σ) ← eval o σ b; pure (a - b, σ)
+  | .lt a b   => do let (a, σ) ← eval o σ a; let (b, σ) ← eval o σ b
+                    pure (if a < b then 1 else 0, σ)
+  | .deref a  => do
+    let (a, σ) ← eval o σ a
+    match σ.heap a with | some v => pure (v, σ) | none => throw .ub
+  | .read     => let v := o σ.reads; pure (v, σ.input v)          -- pre-seeded
+  | .alloc k  => do let (k, σ) ← eval o σ k; pure (σ.next, σ.alloc k)  -- we pick the block
 /- !end hide -/
 def exec (o : Oracle) (σ : State) : (fuel : Nat) → Program → Trace × Option Error
   | 0, _ :: _ => (σ.trace, some .outOfFuel)  -- diverged? or unlucky?
-  | n+1, .while c s :: p => match eval σ c with
-    | .ok v    => exec o σ n (if v ≠ 0 then s ++ .while c s :: p else p)
-    | .error e => (σ.trace, some e)
-  | n+1, .assign x .read :: p => exec o (σ.input x (o σ.reads)) n p  -- pre-seeded
-  | n+1, .assign x (.alloc k) :: p => match eval σ k with  -- we pick the block
-    | .ok k    => exec o (σ.alloc x k) n p
-    | .error e => (σ.trace, some e)
-  | n+1, .store a v :: p => match eval σ a, eval σ v with
-    | .ok a, .ok v => if σ.allocated a then exec o (σ.store a v) n p
-                      else (σ.trace, some .ub)
-    | .error e, _ | _, .error e => (σ.trace, some e)
+  | n+1, .while c s :: p => (eval o σ c).orStop σ fun v σ =>
+      exec o σ n (if v ≠ 0 then s ++ .while c s :: p else p)
+  | n+1, .assign x e :: p => (eval o σ e).orStop σ fun v σ => exec o (σ.set x v) n p
+  | n+1, .store a v :: p => (eval o σ a).orStop σ fun a σ =>
+      (eval o σ v).orStop σ fun v σ =>
+      if σ.allocated a then exec o (σ.store a v) n p else (σ.trace, some .ub)
   /- !hide -/
-  | n+1, .assign x e :: p => match eval σ e with
-    | .ok v    => exec o (σ.set x v) n p
-    | .error e => (σ.trace, some e)
-  | n+1, .print e :: p => match eval σ e with
-    | .ok v    => exec o (σ.print v) n p
-    | .error e => (σ.trace, some e)
-  | n+1, .ifThenElse c z nz :: p => match eval σ c with
-    | .ok v    => exec o σ n ((if v = 0 then z else nz) ++ p)
-    | .error e => (σ.trace, some e)
+  | n+1, .print e :: p => (eval o σ e).orStop σ fun v σ => exec o (σ.print v) n p
+  | n+1, .ifThenElse c z nz :: p => (eval o σ c).orStop σ fun v σ =>
+      exec o σ n ((if v = 0 then z else nz) ++ p)
   | _,   []                   => (σ.trace, none)
   /- !end hide -/
 ```
