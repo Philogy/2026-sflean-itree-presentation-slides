@@ -107,6 +107,8 @@ def Except.orStop (r : Except ε (Nat × State)) (σ : State)
 
 :::class "big-code"
 ```lean
+abbrev Fuel := Nat
+
 inductive Error where | ub | outOfFuel | invalidVar
 
 def eval (o : Oracle) (σ : State) : Expr → Except Error (Nat × State)
@@ -123,7 +125,10 @@ def eval (o : Oracle) (σ : State) : Expr → Except Error (Nat × State)
   | .read     => let v := o σ.reads; pure (v, σ.input v)          -- pre-seeded
   | .alloc k  => do let (k, σ) ← eval o σ k; pure (σ.next, σ.alloc k)  -- we pick the block
 /- !end hide -/
-def exec (o : Oracle) (σ : State) : (fuel : Nat) → Program → Trace × Option Error
+def exec (o : Oracle) (σ : State) : Fuel → Program → Trace × Option Error
+  /- !hide -/
+  -- TODO To Anyone reading: this snippet is vibecoded and I unfortunately didn't have more time to clean
+  -- it up!
   | 0, _ :: _ => (σ.trace, some .outOfFuel)  -- diverged? or unlucky?
   | n+1, .while c s :: p => (eval o σ c).orStop σ fun v σ =>
       exec o σ n (if v ≠ 0 then s ++ .while c s :: p else p)
@@ -131,7 +136,6 @@ def exec (o : Oracle) (σ : State) : (fuel : Nat) → Program → Trace × Optio
   | n+1, .store a v :: p => (eval o σ a).orStop σ fun a σ =>
       (eval o σ v).orStop σ fun v σ =>
       if σ.allocated a then exec o (σ.store a v) n p else (σ.trace, some .ub)
-  /- !hide -/
   | n+1, .print e :: p => (eval o σ e).orStop σ fun v σ => exec o (σ.print v) n p
   | n+1, .ifThenElse c z nz :: p => (eval o σ c).orStop σ fun v σ =>
       exec o σ n ((if v = 0 then z else nz) ++ p)
@@ -140,8 +144,8 @@ def exec (o : Oracle) (σ : State) : (fuel : Nat) → Program → Trace × Optio
 ```
 :::
 
-* Out of fuel ≠ divergence: a server and a crash look alike
-* Nondeterminism must be resolved up front (oracle, bump allocator)
+* Nontermination implicit (no fuel value that doesn't error)
+* Nondeterminism and effect results requires upfront fixed implementations
 
 # Relational Big-Step
 
@@ -153,20 +157,23 @@ inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩
 
 :::class "big-code"
 ```code toy
-⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩        ⟨e, σ⟩ ⇓ n    ∀ i < n, σ.heap (a + i) = none
-──────────────────────────────────────        ───────────────────────────────────────────────
-     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := alloc e, σ⟩ ⇓ ⟨σ[a..a+n ↦ₕ 0][x ↦ a], []⟩
+⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩         a ∈ ℕ    ⟨e, σ⟩ ⇓ n    ∀ i < n, σ.heap (a + i) = none
+───────────────────────────────────────── (seq)   ───────────────────────────────────────────────────── (alloc)
+     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩                    ⟨x := alloc e, σ⟩ ⇓ ⟨σ[a..a+n ↦ₕ 0][x ↦ a], []⟩
 
-                         ───────────────────────────────────
+                                        v ∈ ℕ
+                         ─────────────────────────────────── (read)
                           ⟨x := read, σ⟩ ⇓ ⟨σ[x ↦ v], [in v]⟩
 ```
 :::
 
-* Nondeterminism is free: any free block `a`, any `v`
-* `while true do print 1` has *no* derivation: the server is a no-op
-* Fix: a second, coinductive judgment `⟨s, σ⟩ ⇑ T`, duplicating every rule
+* Nondeterminism & effects are "free" (e.g. `a` in `alloc`, `v` in `read`)
+* Nontermination handles sub-optimally
+  * In Naive Big-Step: Stuck State (no derivation)
+  * Fix 1: Add explicit nontermination judgements (duplicating rules)
+  * Fix 2: Small-Step like relation
 
-# Small-Step (TODO)
+# Small-Step
 
 :::class "big-code"
 ```code toy
@@ -184,12 +191,16 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 ```
 :::
 
-* Infinite runs are infinite chains: the server finally exists
-* Price: congruence rules everywhere, simulation diagrams up to τ
+* Direct reasoning about nontermination
+* Nondeterminism & effects are still "free"
+* Requires explicitly modeling state transitions
+* Resulting execution not immediately clear (⇒ bug prone)
+  * Lean4 auto-implicits can obscure what is being quantified over
+  * Accidental nondeterminism (several valid derivations for one state)
+  * Unintended UB (via stuck states)
 
 
-
-# Formalized Language Semantics: The Obvious Ways
+# Big Picture Comparison
 
 :::table +colHeaders +rowHeaders +stripedRows +headerSep
 *
