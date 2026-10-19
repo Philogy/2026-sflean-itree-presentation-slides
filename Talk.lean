@@ -72,18 +72,20 @@ while 0 < n do
 :::
 
 
-# Fueled Interpreter (TODO)
+# Fueled Interpreter
 
 :::class "big-code"
-```code toy
-inductive Error | ub | outOfFuel | invalidVar
+```lean
+inductive Error where | ub | outOfFuel | invalidVar
 
-def exec : (fuel : Nat) → Oracle → Program → Trace × Option Error
-| 0,   _, _                  => ([], some outOfFuel)   -- diverged? or unlucky?
-| n+1, o, while c s :: p     => if ⟦c⟧ ≠ 0 then exec n o (s ++ while c s :: p) …
-| n+1, o, x := read :: p     => let v := o.next …      -- the world, pre-seeded
-| n+1, o, x := alloc e :: p  => let a := fresh ⟦e⟧ …   -- one block, picked by us
-| n+1, o, store a e :: p     => if ¬ allocated ⟦a⟧ then ([], some ub) …
+def eval (o : Oracle) : Expr → Except Error Nat := sorry
+
+def exec (fuel : Nat) (o : Oracle) : Program → Trace × Option Error
+| 0,   _                  => ([], some outOfFuel)   -- diverged? or unlucky?
+| n+1, .while c s :: p    => if eval o c ≠ 0 then exec n o (s ++ .while c s :: p) else ([], none)
+| n+1, x := read :: p     => let v := o.next …      -- the world, pre-seeded
+| n+1, x := alloc e :: p  => let a := fresh ⟦e⟧ …   -- one block, picked by us
+| n+1, store a e :: p     => if ¬ allocated ⟦a⟧ then ([], some ub) …
 ```
 :::
 
@@ -388,8 +390,7 @@ def ITree.bind (t : ITree E A) (g : A → ITree E B) : ITree E B where
 It's all about the Specification
 
 - Bugs in the Specification undermine the Soundness of your Verification
-- With AI *you* become the bottleneck ⇒ anything that makes mission critical code less painful to
-audit is a win
+- With AI *you are the bottleneck* ⇒ anything that makes critical code less painful to audit is a win
 - typical language formalization approaches are sub-optimal
 - iTrees are great
 

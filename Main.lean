@@ -30,8 +30,7 @@ def outroSlide : IO String := do
     "<div class=\"text-pane\"><h1>Thanks for listening!</h1><div class=\"contacts\">" ++
     (← row "mail" "philippe@dumo.net" (some "mailto:philippe@dumo.net")) ++
     (← row "x" "@real_philogy" (some "https://x.com/real_philogy")) ++
-    (← row "signal" "philogy.21") ++
-    (← row "github" "Philogy/2026-sflean-itree-presentation-slides"
+    (← row "github"  "slides: Philogy/2026-sflean-itree-presentation-slides"
       (some "https://github.com/Philogy/2026-sflean-itree-presentation-slides")) ++
     "</div></div></section>"
 
