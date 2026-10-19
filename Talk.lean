@@ -168,12 +168,14 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 :::
 
 
+:::fragment fadeUp (index := 1)
 *What does our Ideal Version look like?*
 
 * Executable
 * Trivially Non-Terminating
 * Abstract / Modular Effects
 * UB Explicit
+:::
 
 # Introducing Interaction Trees (iTrees)
 
