@@ -45,7 +45,7 @@ unsafe { *Box::as_mut_ptr(&mut x).add(1) = 2 };
 inductive Expr where
   | lit (n: Nat) | var (id: Nat)
   | add (x y : Expr) | sub (x y : Expr) | lt (x y : Expr)
-  | ref (v : Expr) | deref (addr : Expr)
+  | alloc (size : Expr) | deref (addr : Expr)
   | read
 
 inductive Stmt where
@@ -63,7 +63,7 @@ abbrev Program := List Stmt
 :::class "big-code"
 ```code toy
 n := read;
-p := ref 0;
+p := alloc 1;
 while 0 < n do
   store p (deref p + n);
   print (deref p);
@@ -76,14 +76,14 @@ while 0 < n do
 
 :::class "big-code"
 ```code toy
-def exec : (fuel : Nat) → (input : Trace → Nat)
-         → Stmt → State
-         → Result State × Trace
+inductive Error | ub | outOfFuel | invalidVar
 
-| 0,   _,   s,           σ => (outOfFuel, [])     -- diverged? or unlucky?
-| n+1, inp, while c s,   σ => if ⟦c⟧σ ≠ 0 then exec n inp (s ; while c s) σ …
-| n+1, inp, x := read,   σ => let v := inp trace …   -- the world, pre-seeded
-| n+1, inp, x := ref e,  σ => let ℓ := fresh σ …     -- one address, picked by us
+def exec : (fuel : Nat) → Oracle → Program → Trace × Option Error
+| 0,   _, _                  => ([], some outOfFuel)   -- diverged? or unlucky?
+| n+1, o, while c s :: p     => if ⟦c⟧ ≠ 0 then exec n o (s ++ while c s :: p) …
+| n+1, o, x := read :: p     => let v := o.next …      -- the world, pre-seeded
+| n+1, o, x := alloc e :: p  => let a := fresh ⟦e⟧ …   -- one block, picked by us
+| n+1, o, store a e :: p     => if ¬ allocated ⟦a⟧ then ([], some ub) …
 ```
 :::
 
@@ -100,16 +100,16 @@ inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩
 
 :::class "big-code"
 ```code toy
-⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩        ⟨e, σ⟩ ⇓ v    σ.heap ℓ = none
-──────────────────────────────────────        ────────────────────────────────────────
-     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := ref e, σ⟩ ⇓ ⟨σ[ℓ ↦ₕ v][x ↦ ℓ], []⟩
+⟨s₁, σ⟩ ⇓ ⟨σ₁, t₁⟩    ⟨s₂, σ₁⟩ ⇓ ⟨σ₂, t₂⟩        ⟨e, σ⟩ ⇓ n    ∀ i < n, σ.heap (a + i) = none
+──────────────────────────────────────        ───────────────────────────────────────────────
+     ⟨s₁ ; s₂, σ⟩ ⇓ ⟨σ₂, t₁ ++ t₂⟩             ⟨x := alloc e, σ⟩ ⇓ ⟨σ[a..a+n ↦ₕ 0][x ↦ a], []⟩
 
                          ───────────────────────────────────
                           ⟨x := read, σ⟩ ⇓ ⟨σ[x ↦ v], [in v]⟩
 ```
 :::
 
-* Nondeterminism is free: any `ℓ`, any `v`
+* Nondeterminism is free: any free block `a`, any `v`
 * `while true do print 1` has *no* derivation: the server is a no-op
 * Fix: a second, coinductive judgment `⟨s, σ⟩ ⇑ T`, duplicating every rule
 
@@ -287,11 +287,11 @@ inductive MemEv : Type → Type where
   | deref (addr : Nat) : MemEv Nat
   | write (addr v : Nat) : MemEv Unit
 
-/-- Host events: everything the outside world answers, including where `ref` allocates. -/
+/-- Host events: everything the outside world answers, including where `alloc` places a block. -/
 inductive HostEv : Type → Type where
   | print (v : Nat) : HostEv Unit
   | read : HostEv Nat
-  | ref (v : Nat) : HostEv Nat
+  | alloc (size : Nat) : HostEv Nat
 
 abbrev Ev := MemEv ⊕ₑ HostEv
 
@@ -299,7 +299,7 @@ def deref (a : Nat) : ITree Ev Nat := ITree.trigger (.inl (.deref a))
 def write (a v : Nat) : ITree Ev Unit := ITree.trigger (.inl (.write a v))
 def print (v : Nat) : ITree Ev Unit := ITree.trigger (.inr (.print v))
 def read : ITree Ev Nat := ITree.trigger (.inr .read)
-def ref (v : Nat) : ITree Ev Nat := ITree.trigger (.inr (.ref v))
+def alloc (n : Nat) : ITree Ev Nat := ITree.trigger (.inr (.alloc n))
 
 /-- Variable values. -/
 abbrev Vars := Nat → Nat
@@ -312,7 +312,7 @@ def eval (vars : Vars) : Expr → ITree Ev Nat
   | .var x     => pure (vars x)
   | .add a b   => do return (← eval vars a) + (← eval vars b)
   | .read      => read
-  | .ref e     => do ref (← eval vars e)
+  | .alloc e   => do alloc (← eval vars e)
   | .deref e   => do deref (← eval vars e)
   -- | .sub a b => ... | .lt a b => ...
   /- !hide -/
