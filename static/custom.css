@@ -507,7 +507,7 @@
 }
 
 .reveal .slides pre.big-code {
-  font-size: 0.75em;
+  font-size: 0.5em;
 }
 
 /* highlight.js (non-Lean blocks) in the Gruvbox-light palette used for Lean */

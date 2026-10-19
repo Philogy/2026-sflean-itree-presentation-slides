@@ -41,24 +41,29 @@ unsafe { *Box::as_mut_ptr(&mut x).add(1) = 2 };
 
 *Definition*
 
-:::class "big-code"
-```code toy
-e ::= n | x | e + e | e - e | e < e
-    | ref e | deref e                 -- create & lookup a reference
-    | read                            -- effect: external input
+```lean
+inductive Expr where
+  | lit (n: Nat) | var (id: Nat)
+  | add (x y : Expr) | sub (x y : Expr) | lt (x y : Expr)
+  | ref (v : Expr) | deref (addr : Expr)
+  | read
 
-s ::= skip | x := e | let x := e in s | s ; s
-    | if e then s else s | while e do s
-    | store e e | print e             -- effects
+inductive Stmt where
+  | assign (id : Nat) (v : Expr)
+  | ifThenElse (cond : Expr) (zero : List Stmt) (nonZero : List Stmt)
+  | while (cond : Expr) (body : List Stmt)
+  | store (addr v : Expr)
+  | print (v : Expr)
+
+abbrev Program := List Stmt
 ```
-:::
 
 *Example Program*
 
 :::class "big-code"
 ```code toy
 n := read;
-let p := ref 0 in
+p := ref 0;
 while 0 < n do
   store p (deref p + n);
   print (deref p);
@@ -66,7 +71,6 @@ while 0 < n do
 ```
 :::
 
-# Semantics: What Does it Mean to *Run* Our Program
 
 # Fueled Interpreter
 
@@ -147,8 +151,8 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
   * ❌
 *
   * Non-termination
-  * Confused with "out of fuel"
-  * Invisible (no derivation)
+  * Akward quantification over `fuel`
+  * Stuck State (or UB)
   * Infinite step chain
 *
   * Effects & I/O
@@ -160,10 +164,83 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
   * Fuel lemmas everywhere
   * Induction on derivations
   * Simulation diagrams
+  
 :::
 
 
+# What does our Ideal Version look like?
+
+* Executable
+* Reads like Straight-line Code
+* Represents Non-Terminating Computation
+* Less Bug-Prone
+
+# Introducing Interaction Trees (iTrees)
+
+An iTree based interpreter
+
+```lean -show
+namespace Interp
+noncomputable section
+axiom ITree (E : Type → Type) (R : Type) : Type
+axiom ITree.monad {E : Type → Type} : Monad (ITree E)
+attribute [instance] ITree.monad
+axiom trigger {E : Type → Type} {A : Type} : E A → ITree E A
+axiom ITree.iter {E : Type → Type} {I R : Type} :
+  (I → ITree E (I ⊕ R)) → I → ITree E R
+
+inductive Ev : Type → Type where
+  | print : Nat → Ev Unit
+  | read : Ev Nat
+  | ref : Nat → Ev Nat
+  | deref : Nat → Ev Nat
+  | store : Nat → Nat → Ev Unit
+
+abbrev Env := Nat → Nat
+def Env.set (ρ : Env) (x v : Nat) : Env := fun y => if y = x then v else ρ y
+```
+
+```lean
+def eval (ρ : Env) : Expr → ITree Ev Nat
+  | .lit n     => pure n
+  | .var x     => pure (ρ x)
+  | .add a b   => do return (← eval ρ a) + (← eval ρ b)
+  | .read      => trigger .read
+  | .ref e     => do trigger (.ref (← eval ρ e))
+  | .deref e   => do trigger (.deref (← eval ρ e))
+  /- !hide -/
+  | .sub a b   => do return (← eval ρ a) - (← eval ρ b)
+  | .lt a b    => do return if (← eval ρ a) < (← eval ρ b) then 1 else 0
+  /- !end hide -/
+
+/- !hide -/
+mutual
+/- !end hide -/
+def exec (ρ : Env) : Stmt → ITree Ev Env
+  | .assign x e  => do return ρ.set x (← eval ρ e)
+  | .print e     => do trigger (.print (← eval ρ e)); return ρ
+  | .while c s   => ITree.iter (fun ρ => do
+      if (← eval ρ c) = 0 then return .inr ρ
+      else return .inl (← execBlock ρ s)) ρ
+  /- !hide -/
+  | .store a e   => do trigger (.store (← eval ρ a) (← eval ρ e)); return ρ
+  | .ifThenElse c z nz => do
+      if (← eval ρ c) = 0 then execBlock ρ z else execBlock ρ nz
+
+def execBlock (ρ : Env) : List Stmt → ITree Ev Env
+  | [] => pure ρ
+  | s :: ss => do execBlock (← exec ρ s) ss
+end
+/- !end hide -/
+```
+
+```lean -show
+end
+end Interp
+```
+
 # Monad Instance and `#eval`
+
 
 ```lean
 inductive Step (E : Type → Type) (R X : Type) : Type 1 where
