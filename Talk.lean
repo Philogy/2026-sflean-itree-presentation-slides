@@ -248,6 +248,38 @@ end ITree
 abbrev SumE (E F : Type → Type) : Type → Type := fun A => E A ⊕ F A
 infixr:65 " ⊕ₑ " => SumE
 
+/-- A recursive call with argument `I`, answered with `O`. -/
+inductive Call (I O : Type) : Type → Type where
+  | call (i : I) : Call I O O
+
+/-- Rename events: same states, every `vis e` becomes `vis (f e)`. -/
+def ITree.mapE (f : ∀ {A}, E A → F A) (t : ITree E R) : ITree F R where
+  σ := t.σ
+  now := t.now
+  step s := match t.step s with
+    | .ret r => .ret r
+    | .tau s' => .tau s'
+    | .vis e k => .vis (f e) k
+
+instance : MonadLift (ITree E) (ITree (D ⊕ₑ E)) where
+  monadLift := ITree.mapE .inr
+
+/-- Make a recursive call from inside the body of `ITree.fix`. -/
+def call (i : I) : ITree (Call I O ⊕ₑ E) O := ITree.trigger (.inl (.call i))
+
+/-- Recursion: `body i` computes the answer at `i` and may `call j`. The state is the running
+frame plus a stack of suspended callers, each waiting for an `O`. Calls and returns are silent. -/
+def ITree.fix (body : I → ITree (Call I O ⊕ₑ E) O) (i : I) : ITree E O where
+  σ := (Σ i, (body i).σ) × List (Σ i, O → (body i).σ)
+  now := (⟨i, (body i).now⟩, [])
+  step
+    | (⟨i, s⟩, stack) => match (body i).step s, stack with
+      | .ret o, [] => .ret o
+      | .ret o, ⟨i', k⟩ :: stack => .tau (⟨i', k o⟩, stack)
+      | .tau s', stack => .tau (⟨i, s'⟩, stack)
+      | .vis (.inl (.call j)) k, stack => .tau (⟨j, (body j).now⟩, ⟨i, k⟩ :: stack)
+      | .vis (.inr e) k, stack => .vis e (fun x => (⟨i, k x⟩, stack))
+
 /-- Memory events: handled by a heap model. -/
 inductive MemEv : Type → Type where
   | deref (addr : Nat) : MemEv Nat
@@ -285,7 +317,7 @@ def eval (vars : Vars) : Expr → ITree Ev Nat
   | .lt a b    => do return if (← eval vars a) < (← eval vars b) then 1 else 0
 
   /- !end hide -/
-def exec (vars : Vars) : Stmt → ITree Ev Vars
+def exec : Vars × Stmt → ITree Ev Vars := ITree.fix fun (vars, s) => match s with
   | .assign x e  => do return vars.set x (← eval vars e)
   | .print e     => do
       print (← eval vars e)
@@ -294,16 +326,15 @@ def exec (vars : Vars) : Stmt → ITree Ev Vars
       let mut vars := vars
       while (← eval vars c) ≠ 0 do
         for s in ss do
-          vars ← exec vars s
+          vars ← call (vars, s)
       return vars
   /- !hide -/
   | .store a e   => do write (← eval vars a) (← eval vars e); return vars
   | .ifThenElse c z nz => do
+      let branch := if (← eval vars c) = 0 then z else nz
       let mut vars := vars
-      if (← eval vars c) = 0 then
-        for s in z do vars ← exec vars s
-      else
-        for s in nz do vars ← exec vars s
+      for s in branch do
+        vars ← call (vars, s)
       return vars
   /- !end hide -/
 ```
