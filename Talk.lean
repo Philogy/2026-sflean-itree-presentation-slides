@@ -287,16 +287,24 @@ def eval (vars : Vars) : Expr → ITree Ev Nat
   /- !end hide -/
 def exec (vars : Vars) : Stmt → ITree Ev Vars
   | .assign x e  => do return vars.set x (← eval vars e)
-  | .print e     => do print (← eval vars e); return vars
-  | .while c s   => do
+  | .print e     => do
+      print (← eval vars e)
+      return vars
+  | .while c ss  => do
       let mut vars := vars
       while (← eval vars c) ≠ 0 do
-        vars ← s.foldlM exec vars
+        for s in ss do
+          vars ← exec vars s
       return vars
   /- !hide -/
   | .store a e   => do write (← eval vars a) (← eval vars e); return vars
   | .ifThenElse c z nz => do
-      if (← eval vars c) = 0 then z.foldlM exec vars else nz.foldlM exec vars
+      let mut vars := vars
+      if (← eval vars c) = 0 then
+        for s in z do vars ← exec vars s
+      else
+        for s in nz do vars ← exec vars s
+      return vars
   /- !end hide -/
 ```
 
