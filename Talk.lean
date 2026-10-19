@@ -161,7 +161,7 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
   * ✅ Simple Derivation Pre-Condition
 *
   * Undefined Behavior (UB)
-  * ✅ Explicit Error Result
+  * ✅ Explicit Error Kind
   * 👎 Stuck State
   * 👎 Stuck State
   
@@ -177,9 +177,7 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 * UB Explicit
 :::
 
-# Introducing Interaction Trees (iTrees)
-
-An iTree based interpreter
+# Interaction Tree (iTree) Based Interpreters
 
 ```lean -show
 namespace Interp
@@ -346,11 +344,17 @@ def exec : Vars × Stmt → ITree Ev Vars := ITree.fix fun exec (vars, s) => mat
 end Interp
 ```
 
+# What iTrees Give You
+
+* Non-Termination (Unbounded Loops & Recursion)
+* Quasi Executable with Modular Effects (Executable shape fixed, just effects need concrete definitions)
+* Explicit UB (Explicit Kind / Non-resumable Effect)
+
 # How iTrees Work
 
-* Interpreter as Non-Terminating State Machine
-
 ```lean
+/---- iTrees are just fancy State Machines ----/
+
 inductive Step (Effect : Type → Type) (Res State : Type) : Type 1 where
   | ret (r : Res)
   | tau (next : State)
@@ -360,11 +364,9 @@ structure ITree (E : Type → Type) (R : Type) : Type 1 where
   σ : Type
   now : σ
   step : σ → Step E R σ
-```
 
-* iTrees are monadic which allows cleanly composing them into larger iTrees
+/---- iTrees as Monads ----/
 
-```lean
 def ITree.pure (r : R) : ITree E R := ⟨Unit, (), fun () => .ret r⟩
 
 def ITree.bind (t : ITree E A) (g : A → ITree E B) : ITree E B where
@@ -379,23 +381,15 @@ def ITree.bind (t : ITree E A) (g : A → ITree E B) : ITree E B where
       | .ret b => .ret b
       | .tau s' => .tau (.inr ⟨a, s'⟩)
       | .vis e k => .vis e (fun x => .inr ⟨a, k x⟩)
-
 ```
 
+# Recap
 
-# `eutt` and Malloc-Agnostic `Same`
+It's all about the Specification
 
-* Placeholder: weak bisimulation, finite `tau`s skipped, divergence preserved
-* Placeholder: `Same` quantifies over all allocator placements
+- Bugs in the Specification undermine the Soundness of your Verification
+- With AI *you* become the bottleneck ⇒ anything that makes mission critical code less painful to
+audit is a win
+- typical language formalization approaches are sub-optimal
+- iTrees are great
 
-# CoFree and the Quotient
-
-* Placeholder: CoFree + Step encoding, lawful monad on the bisimulation quotient
-
-# Case Study: SIR
-
-* Placeholder: Plank's SIR semantics as ITrees; passes preserve `Same`
-
-# Takeaway
-
-* Placeholder: executable *and* reasoned-about semantics in one definition
