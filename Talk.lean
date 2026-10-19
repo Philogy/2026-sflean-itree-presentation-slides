@@ -74,23 +74,83 @@ while 0 < n do
 
 # Fueled Interpreter
 
+```lean -show
+abbrev Oracle := Nat → Nat   -- answer to the i-th `read`
+
+inductive Event where | input (v : Nat) | output (v : Nat)
+abbrev Trace := List Event
+
+structure State where
+  vars  : Nat → Option Nat := fun _ => none
+  heap  : Nat → Option Nat := fun _ => none
+  next  : Nat := 0
+  reads : Nat := 0
+  trace : Trace := []
+
+/-- Consume the next oracle answer, logging it as an input. -/
+def State.read (s : State) (o : Oracle) : Nat × State :=
+  (o s.reads, { s with reads := s.reads + 1, trace := s.trace ++ [.input (o s.reads)] })
+
+/-- Bump-allocate `n` zeroed cells. -/
+def State.alloc (s : State) (n : Nat) : Nat × State :=
+  (s.next, { s with next := s.next + n,
+                    heap := fun a => if s.next ≤ a ∧ a < s.next + n then some 0 else s.heap a })
+```
+
 :::class "big-code"
 ```lean
 inductive Error where | ub | outOfFuel | invalidVar
 
-def eval (o : Oracle) : Expr → Except Error Nat := sorry
+abbrev M := ExceptT Error (StateM State)
 
-def exec (fuel : Nat) (o : Oracle) : Program → Trace × Option Error
-| 0,   _                  => ([], some outOfFuel)   -- diverged? or unlucky?
-| n+1, .while c s :: p    => if eval o c ≠ 0 then exec n o (s ++ .while c s :: p) else ([], none)
-| n+1, x := read :: p     => let v := o.next …      -- the world, pre-seeded
-| n+1, x := alloc e :: p  => let a := fresh ⟦e⟧ …   -- one block, picked by us
-| n+1, store a e :: p     => if ¬ allocated ⟦a⟧ then ([], some ub) …
+def eval (o : Oracle) : Expr → M Nat
+  | .var x   => do
+      let some v := (← get).vars x | throw .invalidVar
+      pure v
+  | .deref a => do
+      let some v := (← get).heap (← eval o a) | throw .ub
+      pure v
+  | .read    => modifyGet (·.read o)                    -- the world, pre-seeded
+  | .alloc n => do modifyGet (·.alloc (← eval o n))    -- one block, picked by us
+  /- !hide -/
+  | .lit n   => pure n
+  | .add a b => return (← eval o a) + (← eval o b)
+  | .sub a b => return (← eval o a) - (← eval o b)
+  | .lt a b  => return if (← eval o a) < (← eval o b) then 1 else 0
+  /- !end hide -/
+
+def run (o : Oracle) : Nat → Program → M Unit
+  | _,   []              => pure ()
+  | 0,   _               => throw .outOfFuel                -- diverged? or unlucky?
+  | n+1, .while c b :: p => do
+      if (← eval o c) ≠ 0 then run o n (b ++ .while c b :: p) else run o n p
+  /- !hide -/
+  | n+1, .store a v :: p => do
+      let a ← eval o a; let v ← eval o v
+      if (← get).heap a = none then throw .ub
+      modify fun s => { s with heap := fun b => if b = a then some v else s.heap b }
+      run o n p
+  | n+1, .assign x e :: p => do
+      let v ← eval o e
+      modify fun s => { s with vars := fun y => if y = x then some v else s.vars y }
+      run o n p
+  | n+1, .print e :: p => do
+      let v ← eval o e
+      modify fun s => { s with trace := s.trace ++ [.output v] }
+      run o n p
+  | n+1, .ifThenElse c z nz :: p => do
+      if (← eval o c) = 0 then run o n (z ++ p) else run o n (nz ++ p)
+  /- !end hide -/
+
+def exec (fuel : Nat) (o : Oracle) (p : Program) : Trace × Option Error :=
+  match (run o fuel p).run.run {} with
+  | (.ok (),   s) => (s.trace, none)
+  | (.error e, s) => (s.trace, some e)
 ```
 :::
 
 * Out of fuel ≠ divergence: a server and a crash look alike
-* Nondeterminism must be resolved up front (oracles, `fresh`)
+* Nondeterminism must be resolved up front (oracle, bump allocator)
 
 # Relational Big-Step (TODO)
 
