@@ -6,11 +6,11 @@ open VersoSlides
 set_option verso.code.warnLineLength 500
 set_option linter.unusedVariables false
 
-#doc (Slides) "Representing Non-Terminating Computation using iTrees" =>
+#doc (Slides) "Representing Nonterminating Computation using iTrees" =>
 
-# What do we need to verify Real World Software?
+# What do we need to verify Real-World Software?
 
-* A Piece of Real World Software
+* A Piece of Real-World Software
 * {fragment (style := embolden)}[A Language Specification]
 * A Behavioral Specification
 
@@ -22,7 +22,7 @@ let config = fs::read_to_string("config.toml")?;
 fs::write("config.bak", &config)?;
 ```
 
-* Non-Termination
+* Nontermination
 
 ```code rust
 loop {
@@ -31,7 +31,7 @@ loop {
 }
 ```
 
-* Non-Determinism and Undefined Behavior
+* Nondeterminism and Undefined Behavior
 ```code rust
 let mut x = Box::new(0u32);
 unsafe { *Box::as_mut_ptr(&mut x).add(1) = 2 };
@@ -145,7 +145,7 @@ def exec (o : Oracle) (σ : State) : Fuel → Program → Trace × Option Error
 :::
 
 * Nontermination implicit (no fuel value that doesn't error)
-* Nondeterminism and effect results requires upfront fixed implementations
+* Nondeterminism and effect results require fixed implementations upfront
 
 # Relational Big-Step
 
@@ -168,10 +168,10 @@ inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩
 :::
 
 * Nondeterminism & effects are "free" (e.g. `a` in `alloc`, `v` in `read`)
-* Nontermination handles sub-optimally
+* Nontermination handled suboptimally
   * In Naive Big-Step: Stuck State (no derivation)
-  * Fix 1: Add explicit nontermination judgements (duplicating rules)
-  * Fix 2: Small-Step like relation
+  * Fix 1: Add explicit nontermination judgments (duplicating rules)
+  * Fix 2: Small-step-like relation
 
 # Small-Step
 
@@ -194,8 +194,8 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 * Direct reasoning about nontermination
 * Nondeterminism & effects are still "free"
 * Requires explicitly modeling state transitions
-* Resulting execution not immediately clear (⇒ bug prone)
-  * Lean4 auto-implicits can obscure what is being quantified over
+* Resulting execution not immediately clear (⇒ bug-prone)
+  * Lean 4 auto-implicits can obscure what is being quantified over
   * Accidental nondeterminism (several valid derivations for one state)
   * Unintended UB (via stuck states)
 
@@ -207,20 +207,20 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
   *
   * Fueled Interpreter
   * Big-Step Relation
-  * Small-step relation
+  * Small-Step Relation
 *
   * Executable?
   * ✅
   * ❌
   * ❌
 *
-  * Non-termination
-  * 👎 Akward quantification over `fuel`
+  * Nontermination
+  * 👎 Awkward quantification over `fuel`
   * 👎 Stuck State / UB / Duplicate Coinductive Rules
   * ✅ Infinite Step Sequence
 *
-  * Effects & Non-Determinism
-  * 👎 Preset Responses / Concrete model
+  * Effects & Nondeterminism
+  * 👎 Preset Responses / Concrete Model
   * ✅ Simple Derivation Pre-Condition
   * ✅ Simple Derivation Pre-Condition
 *
@@ -236,7 +236,7 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 *What does our Ideal Version look like?*
 
 * Executable
-* Trivially Non-Terminating
+* Trivially Nonterminating
 * Abstract / Modular Effects
 * UB Explicit
 :::
@@ -410,8 +410,8 @@ end Interp
 
 # What iTrees Give You
 
-* Non-Termination (Unbounded Loops & Recursion)
-* Quasi Executable with Modular Effects (Executable shape fixed, just effects need concrete definitions)
+* Nontermination (Unbounded Loops & Recursion)
+* Quasi-Executable with Modular Effects (executable shape fixed, only effects need concrete definitions)
 * Explicit UB (Explicit Kind / Non-resumable Effect)
 
 # How iTrees Work
@@ -453,6 +453,6 @@ It's all about the Specification
 
 - Bugs in the Specification undermine the Soundness of your Verification
 - With AI *you are the bottleneck* ⇒ anything that makes critical code less painful to audit is a win
-- typical language formalization approaches are sub-optimal
+- Typical language formalization approaches are suboptimal
 - iTrees are great
 
