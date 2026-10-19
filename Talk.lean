@@ -181,61 +181,126 @@ An iTree based interpreter
 
 ```lean -show
 namespace Interp
-noncomputable section
-axiom ITree (E : Type → Type) (R : Type) : Type
-axiom ITree.monad {E : Type → Type} : Monad (ITree E)
-attribute [instance] ITree.monad
-axiom trigger {E : Type → Type} {A : Type} : E A → ITree E A
-axiom ITree.iter {E : Type → Type} {I R : Type} :
-  (I → ITree E (I ⊕ R)) → I → ITree E R
 
-inductive Ev : Type → Type where
-  | print : Nat → Ev Unit
-  | read : Ev Nat
-  | ref : Nat → Ev Nat
-  | deref : Nat → Ev Nat
-  | store : Nat → Nat → Ev Unit
+/-- One observable step: finish with `r`, take a silent step, or perform `e` and continue with `k`. -/
+inductive Step (E : Type → Type) (R X : Type) : Type 1 where
+  | ret (r : R)
+  | tau (next : X)
+  | vis {A : Type} (e : E A) (k : A → X)
 
-abbrev Env := Nat → Nat
-def Env.set (ρ : Env) (x v : Nat) : Env := fun y => if y = x then v else ρ y
+/-- An ITree as a coalgebra: a hidden state and one observable step. -/
+structure ITree (E : Type → Type) (R : Type) : Type 1 where
+  σ : Type
+  now : σ
+  step : σ → Step E R σ
+
+namespace ITree
+
+def ret (r : R) : ITree E R := ⟨Unit, (), fun _ => .ret r⟩
+
+/-- Run `t`; once it returns `a`, take one silent step into `g a`. -/
+def bind (t : ITree E A) (g : A → ITree E B) : ITree E B where
+  σ := t.σ ⊕ (Σ a, (g a).σ)
+  now := .inl t.now
+  step
+    | .inl s => match t.step s with
+      | .ret a => .tau (.inr ⟨a, (g a).now⟩)
+      | .tau s' => .tau (.inl s')
+      | .vis e k => .vis e (fun x => .inl (k x))
+    | .inr ⟨a, s⟩ => match (g a).step s with
+      | .ret b => .ret b
+      | .tau s' => .tau (.inr ⟨a, s'⟩)
+      | .vis e k => .vis e (fun x => .inr ⟨a, k x⟩)
+
+instance : Monad (ITree E) where
+  pure := ret
+  bind := bind
+
+/-- Perform a single event and return its answer. -/
+def trigger (e : E A) : ITree E A where
+  σ := Option A
+  now := none
+  step
+    | none => .vis e some
+    | some a => .ret a
+
+/-- Loop: run `body i`; `.inl i'` goes around again (one silent step), `.inr r` exits with `r`. -/
+def iter (body : I → ITree E (I ⊕ R)) (i : I) : ITree E R where
+  σ := Σ i, (body i).σ
+  now := ⟨i, (body i).now⟩
+  step
+    | ⟨i, s⟩ => match (body i).step s with
+      | .ret (.inl i') => .tau ⟨i', (body i').now⟩
+      | .ret (.inr r) => .ret r
+      | .tau s' => .tau ⟨i, s'⟩
+      | .vis e k => .vis e (fun x => ⟨i, k x⟩)
+
+/-- `while`/`repeat` loops in `do` blocks, via `iter`. -/
+instance (priority := high) instForInLoop : ForIn (ITree E) Lean.Loop Unit where
+  forIn _ init f := iter (fun b => do
+    match ← f () b with
+    | .yield b => pure (.inl b)
+    | .done b => pure (.inr b)) init
+
+end ITree
+
+/-- Sum of two event signatures: an event of `E ⊕ₑ F` is an event of either. -/
+abbrev SumE (E F : Type → Type) : Type → Type := fun A => E A ⊕ F A
+infixr:65 " ⊕ₑ " => SumE
+
+/-- Memory events: handled by a heap model. -/
+inductive MemEv : Type → Type where
+  | deref (addr : Nat) : MemEv Nat
+  | write (addr v : Nat) : MemEv Unit
+
+/-- Host events: everything the outside world answers, including where `ref` allocates. -/
+inductive HostEv : Type → Type where
+  | print (v : Nat) : HostEv Unit
+  | read : HostEv Nat
+  | ref (v : Nat) : HostEv Nat
+
+abbrev Ev := MemEv ⊕ₑ HostEv
+
+def deref (a : Nat) : ITree Ev Nat := ITree.trigger (.inl (.deref a))
+def write (a v : Nat) : ITree Ev Unit := ITree.trigger (.inl (.write a v))
+def print (v : Nat) : ITree Ev Unit := ITree.trigger (.inr (.print v))
+def read : ITree Ev Nat := ITree.trigger (.inr .read)
+def ref (v : Nat) : ITree Ev Nat := ITree.trigger (.inr (.ref v))
+
+/-- Variable values. -/
+abbrev Vars := Nat → Nat
+def Vars.set (vars : Vars) (x v : Nat) : Vars := fun y => if y = x then v else vars y
 ```
 
 ```lean
-def eval (ρ : Env) : Expr → ITree Ev Nat
+def eval (vars : Vars) : Expr → ITree Ev Nat
   | .lit n     => pure n
-  | .var x     => pure (ρ x)
-  | .add a b   => do return (← eval ρ a) + (← eval ρ b)
-  | .read      => trigger .read
-  | .ref e     => do trigger (.ref (← eval ρ e))
-  | .deref e   => do trigger (.deref (← eval ρ e))
+  | .var x     => pure (vars x)
+  | .add a b   => do return (← eval vars a) + (← eval vars b)
+  | .read      => read
+  | .ref e     => do ref (← eval vars e)
+  | .deref e   => do deref (← eval vars e)
   /- !hide -/
-  | .sub a b   => do return (← eval ρ a) - (← eval ρ b)
-  | .lt a b    => do return if (← eval ρ a) < (← eval ρ b) then 1 else 0
+  | .sub a b   => do return (← eval vars a) - (← eval vars b)
+  | .lt a b    => do return if (← eval vars a) < (← eval vars b) then 1 else 0
+
   /- !end hide -/
-
-/- !hide -/
-mutual
-/- !end hide -/
-def exec (ρ : Env) : Stmt → ITree Ev Env
-  | .assign x e  => do return ρ.set x (← eval ρ e)
-  | .print e     => do trigger (.print (← eval ρ e)); return ρ
-  | .while c s   => ITree.iter (fun ρ => do
-      if (← eval ρ c) = 0 then return .inr ρ
-      else return .inl (← execBlock ρ s)) ρ
+def exec (vars : Vars) : Stmt → ITree Ev Vars
+  | .assign x e  => do return vars.set x (← eval vars e)
+  | .print e     => do print (← eval vars e); return vars
+  | .while c s   => do
+      let mut vars := vars
+      while (← eval vars c) ≠ 0 do
+        vars ← s.foldlM exec vars
+      return vars
   /- !hide -/
-  | .store a e   => do trigger (.store (← eval ρ a) (← eval ρ e)); return ρ
+  | .store a e   => do write (← eval vars a) (← eval vars e); return vars
   | .ifThenElse c z nz => do
-      if (← eval ρ c) = 0 then execBlock ρ z else execBlock ρ nz
-
-def execBlock (ρ : Env) : List Stmt → ITree Ev Env
-  | [] => pure ρ
-  | s :: ss => do execBlock (← exec ρ s) ss
-end
-/- !end hide -/
+      if (← eval vars c) = 0 then z.foldlM exec vars else nz.foldlM exec vars
+  /- !end hide -/
 ```
 
 ```lean -show
-end
 end Interp
 ```
 
