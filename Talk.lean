@@ -72,7 +72,7 @@ while 0 < n do
 :::
 
 
-# Fueled Interpreter
+# Fueled Interpreter (TODO)
 
 :::class "big-code"
 ```code toy
@@ -90,7 +90,7 @@ def exec : (fuel : Nat) → (input : Trace → Nat)
 * Out of fuel ≠ divergence: a server and a crash look alike
 * Nondeterminism must be resolved up front (oracles, `fresh`)
 
-# Relational Big-Step
+# Relational Big-Step (TODO)
 
 :::class "big-code"
 ```code toy
@@ -113,7 +113,7 @@ inductive BigStep : Stmt → State → State → Trace → Prop   -- ⟨s, σ⟩
 * `while true do print 1` has *no* derivation: the server is a no-op
 * Fix: a second, coinductive judgment `⟨s, σ⟩ ⇑ T`, duplicating every rule
 
-# Small-Step
+# Small-Step (TODO)
 
 :::class "big-code"
 ```code toy
@@ -151,29 +151,29 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
   * ❌
 *
   * Non-termination
-  * Akward quantification over `fuel`
-  * Stuck State (or UB)
-  * Infinite step chain
+  * 👎 Akward quantification over `fuel`
+  * 👎 Stuck State / UB / Duplicate Coinductive Rules
+  * ✅ Infinite Step Sequence
 *
-  * Effects & I/O
-  * Ad hoc
-  * Awkward
-  * Labelled transitions
+  * Effects & Non-Determinism
+  * 👎 Preset Responses / Concrete model
+  * ✅ Simple Derivation Pre-Condition
+  * ✅ Simple Derivation Pre-Condition
 *
-  * Proof style
-  * Fuel lemmas everywhere
-  * Induction on derivations
-  * Simulation diagrams
+  * Undefined Behavior (UB)
+  * ✅ Explicit Error Result
+  * 👎 Stuck State
+  * 👎 Stuck State
   
 :::
 
 
-# What does our Ideal Version look like?
+*What does our Ideal Version look like?*
 
 * Executable
-* Reads like Straight-line Code
-* Represents Non-Terminating Computation
-* Less Bug-Prone
+* Trivially Non-Terminating
+* Abstract / Modular Effects
+* UB Explicit
 
 # Introducing Interaction Trees (iTrees)
 
@@ -314,6 +314,7 @@ def eval (vars : Vars) : Expr → ITree Ev Nat
   | .read      => read
   | .ref e     => do ref (← eval vars e)
   | .deref e   => do deref (← eval vars e)
+  -- | .sub a b => ... | .lt a b => ...
   /- !hide -/
   | .sub a b   => do return (← eval vars a) - (← eval vars b)
   | .lt a b    => do return if (← eval vars a) < (← eval vars b) then 1 else 0
@@ -321,16 +322,13 @@ def eval (vars : Vars) : Expr → ITree Ev Nat
   /- !end hide -/
 def exec : Vars × Stmt → ITree Ev Vars := ITree.fix fun exec (vars, s) => match s with
   | .assign x e  => do return vars.set x (← eval vars e)
-  | .print e     => do
-      print (← eval vars e)
-      return vars
+  | .print e     => do print (← eval vars e); return vars
   | .while c ss  => do
       let mut vars := vars
       while (← eval vars c) ≠ 0 do
         for s in ss do
           vars ← exec (vars, s)
       return vars
-  /- !hide -/
   | .store a e   => do write (← eval vars a) (← eval vars e); return vars
   | .ifThenElse c z nz => do
       let branch := if (← eval vars c) = 0 then z else nz
@@ -338,6 +336,7 @@ def exec : Vars × Stmt → ITree Ev Vars := ITree.fix fun exec (vars, s) => mat
       for s in branch do
         vars ← exec (vars, s)
       return vars
+  /- !hide -/
   /- !end hide -/
 ```
 
@@ -345,54 +344,42 @@ def exec : Vars × Stmt → ITree Ev Vars := ITree.fix fun exec (vars, s) => mat
 end Interp
 ```
 
-# Monad Instance and `#eval`
+# How iTrees Work
 
+* Interpreter as Non-Terminating State Machine
 
 ```lean
-inductive Step (E : Type → Type) (R X : Type) : Type 1 where
-  | ret (r : R)
-  | tau (next : X)
-  | vis {A : Type} (e : E A) (k : A → X)
+inductive Step (Effect : Type → Type) (Res State : Type) : Type 1 where
+  | ret (r : Res)
+  | tau (next : State)
+  | vis {A : Type} (e : Effect A) (k : A → State)
 
-/-- An ITree as a coalgebra: a hidden state and one observable step. -/
 structure ITree (E : Type → Type) (R : Type) : Type 1 where
   σ : Type
   now : σ
   step : σ → Step E R σ
-
-def ITree.spin : ITree E R := ⟨Unit, (), fun _ => .tau ()⟩
 ```
 
-* Placeholder: infinite behaviour as a value, effects as an open signature `E`
+* iTrees are monadic which allows cleanly composing them into larger iTrees
 
 ```lean
-inductive Out : Type → Type where
-  | print (n : Nat) : Out Unit
+def ITree.pure (r : R) : ITree E R := ⟨Unit, (), fun () => .ret r⟩
 
-def ITree.run (fuel : Nat) (t : ITree Out R) : List Nat × Option R :=
-  go fuel t.now
-where
-  go : Nat → t.σ → List Nat × Option R
-    | 0, _ => ([], none)
-    | n + 1, s =>
-      match t.step s with
-      | .ret r => ([], some r)
-      | .tau s' => go n s'
-      | .vis (.print k) cont =>
-        let (out, r) := go n (cont ())
-        (k :: out, r)
-
-def countdown : ITree Out Unit where
-  σ := Nat
-  now := 3
+def ITree.bind (t : ITree E A) (g : A → ITree E B) : ITree E B where
+  σ := t.σ ⊕ (Σ a, (g a).σ)
+  now := .inl t.now
   step
-    | 0 => .ret ()
-    | n + 1 => .vis (.print (n + 1)) (fun _ => n)
+    | .inl s => match t.step s with
+      | .ret a => .tau (.inr ⟨a, (g a).now⟩)
+      | .tau s' => .tau (.inl s')
+      | .vis e k => .vis e (fun x => .inl (k x))
+    | .inr ⟨a, s⟩ => match (g a).step s with
+      | .ret b => .ret b
+      | .tau s' => .tau (.inr ⟨a, s'⟩)
+      | .vis e k => .vis e (fun x => .inr ⟨a, k x⟩)
 
-#eval countdown.run 10
 ```
 
-* Placeholder: `bind`, monad laws up to `eutt`
 
 # `eutt` and Malloc-Agnostic `Same`
 
