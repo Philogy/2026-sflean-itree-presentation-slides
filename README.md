@@ -1,46 +1,17 @@
-# SF Lean — Interaction Trees in Lean 4 (2026)
+# Representing Nonterminating Computation using iTrees
 
-Slides for an SF Lean talk on Interaction Trees (ITrees) in Lean 4, built with
-[VersoSlides](https://github.com/leanprover/verso-slides): Lean documents
-compiled to an offline [reveal.js](https://revealjs.com) deck, with real
-semantic Lean highlighting on code blocks.
+Slides for an SF Lean talk, built with [VersoSlides](https://github.com/leanprover/verso-slides).
 
-## Build
+## Run
+
+Requires [elan](https://github.com/leanprover/elan) (installs the pinned Lean toolchain automatically).
 
 ```sh
-lake build          # compile the slides executable
-lake exe slides     # render the deck into ./_slides
+git clone https://github.com/Philogy/2026-sflean-itree-presentation-slides.git
+cd 2026-sflean-itree-presentation-slides
+lake build
+lake exe slides
 open _slides/index.html
 ```
 
-`_slides/` and `.lake/` are gitignored.
-
-## Layout
-
-- `Talk.lean` — the deck itself (`#doc (Slides) ...`), one `#` heading per slide.
-- `Main.lean` — entry point; `slidesMain`, then post-processes `_slides/`
-  (custom CSS, header rule, title slide, `disableLayout`, inlined hover
-  docs so the deck works from `file://`).
-- `static/` — `custom.css`, adapted from Leo de Moura's
-  [ETAPSTutorial2026](https://github.com/leodemoura/ETAPSTutorial2026) deck.
-- `lakefile.lean` — package config; depends on `verso-slides`.
-- `lean-toolchain` — pinned to `leanprover/lean4:v4.36.0-rc1` (matches the
-  `verso-slides` tag).
-
-## Slides
-
-1. Fuel vs. relational semantics
-2. ITrees: `ret`, `tau`, `vis`
-3. Monad instance and `#eval`
-4. `eutt` and malloc-agnostic `Same`
-5. CoFree and the quotient
-6. Case study: SIR
-7. Takeaway
-
-Most slides past the first few are placeholders to be fleshed out.
-
-## Upstream reputation
-
-`verso-slides` is published by `@leanprover` (the Lean FRO) on Reservoir, part
-of the Verso documentation toolchain — the same system behind the official Lean
-manuals. First-party and low-risk.
+On Linux use `xdg-open` instead of `open`.

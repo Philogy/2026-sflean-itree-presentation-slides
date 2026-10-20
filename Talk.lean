@@ -8,11 +8,6 @@ set_option linter.unusedVariables false
 
 #doc (Slides) "Representing Nonterminating Computation using iTrees" =>
 
-# What do we need to verify Real-World Software?
-
-* A Piece of Real-World Software
-* {fragment (style := embolden)}[A Language Specification]
-* A Behavioral Specification
 
 # Real Languages are Messy
 
@@ -245,7 +240,7 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 * UB Explicit
 :::
 
-# Interaction Trees (iTrees)
+# iTrees (Interaction Trees) I
 
 ```html
 <div class="stepped">
@@ -260,7 +255,7 @@ while 0 < n do
 </div>
 ```
 
-# Interaction Trees (iTrees) (2)
+# iTrees II
 
 ```html
 <div class="stepped">
@@ -275,7 +270,7 @@ while 0 < n do
 </div>
 ```
 
-Every answer picks a branch and the loop unrolls once per iteration: a finite program, an infinitely branching tree.
+Every effect is root branching on the response, unfolding the tree on the result
 
 # iTree Based Interpreter
 
@@ -488,7 +483,7 @@ def ITree.bind (t : ITree E A) (g : A → ITree E B) : ITree E B where
 It's all about the Specification
 
 - Bugs in the Specification undermine the Soundness of your Verification
-- With AI *you are the bottleneck* ⇒ anything that makes critical code less painful to audit is a win
 - Typical language formalization approaches are suboptimal
+- With AI *you are the bottleneck* ⇒ anything that makes critical code less painful to audit is a win
 - iTrees are great
 

@@ -49,8 +49,6 @@ def appendixSlide : String :=
       "iTrees plus nondeterministic branching; CCS and cooperative concurrency" ++
     src "reilabs/freigen" "https://github.com/reilabs/freigen"
       "Reilabs' Lean 4 iTree and effects library" ++
-    src "Lean 4 coinductive predicates (v4.25.0)" "https://lean-lang.org/doc/reference/latest/releases/v4.25.0"
-      "The coinductive command, lean4#10333" ++
     src "leodemoura/ETAPSTutorial2026" "https://github.com/leodemoura/ETAPSTutorial2026"
       "Slide look adapted from Leo de Moura's tutorial" ++
     src "leanprover/verso-slides" "https://github.com/leanprover/verso-slides"
