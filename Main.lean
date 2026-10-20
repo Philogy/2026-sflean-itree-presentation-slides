@@ -30,7 +30,7 @@ def outroSlide : IO String := do
     "<div class=\"text-pane\"><h1>Thanks for listening!</h1><div class=\"contacts\">" ++
     (← row "mail" "philippe@dumo.net" (some "mailto:philippe@dumo.net")) ++
     (← row "x" "@real_philogy" (some "https://x.com/real_philogy")) ++
-    (← row "github"  "slides: Philogy/2026-sflean-itree-presentation-slides"
+    (← row "github"  "slides: github.com/Philogy/2026-sflean-itree-presentation-slides"
       (some "https://github.com/Philogy/2026-sflean-itree-presentation-slides")) ++
     "</div></div></section>"
 
@@ -45,6 +45,8 @@ def appendixSlide : String :=
       "Coinductive free monad over events; eutt, interp, Coq library" ++
     src "General Recursion via Coinductive Types (Capretta, LMCS 2005)" "https://arxiv.org/abs/cs/0505037"
       "The delay monad: iTrees without events" ++
+    src "Choice Trees (Chappe et al., POPL 2023)" "https://arxiv.org/abs/2211.06863"
+      "iTrees plus nondeterministic branching; CCS and cooperative concurrency" ++
     src "reilabs/freigen" "https://github.com/reilabs/freigen"
       "Reilabs' Lean 4 iTree and effects library" ++
     src "Lean 4 coinductive predicates (v4.25.0)" "https://lean-lang.org/doc/reference/latest/releases/v4.25.0"
