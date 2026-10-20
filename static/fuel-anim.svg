@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" width="640" height="240">
+  <!-- 9s loop; one step every 0.8s (keyTimes = 0.8k/9); out of fuel at 5.6s, held to 9s -->
+  <style>
+    .code { font: 20px "SF Mono", Menlo, monospace; fill: #3c3836; white-space: pre; }
+    .kw { fill: #905E43; font-weight: 600; }
+    .lit { fill: #af3a03; }
+    .label { font: 15px -apple-system, "Helvetica Neue", sans-serif; fill: #7c6f64; }
+    .fuel { font: 600 64px "SF Mono", Menlo, monospace; fill: #3c3836; }
+    .msg { font: 600 20px -apple-system, "Helvetica Neue", sans-serif; fill: #cc241d; }
+  </style>
+
+  <rect x="1" y="1" width="638" height="238" rx="10" fill="#F4EEE7" stroke="#905E43" stroke-width="1.5"/>
+
+  <!-- highlight bar + cursor: lines 1 2 3 4 5 6 3 4 -->
+  <rect x="38" y="19" width="340" height="30" rx="4" fill="#EBD5C0">
+    <animate attributeName="y" calcMode="discrete" dur="9s" repeatCount="indefinite"
+      values="19;49;79;109;139;169;79;109" keyTimes="0;0.0889;0.1778;0.2667;0.3556;0.4444;0.5333;0.6222"/>
+  </rect>
+  <rect x="38" y="109" width="340" height="30" rx="4" fill="#cc241d" opacity="0">
+    <animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite"
+      values="0;0.45;0.15;0.45;0.15;0.45" keyTimes="0;0.6222;0.6889;0.7556;0.8222;0.8889"/>
+  </rect>
+  <path d="M18 -9 L30 0 L18 9 Z" fill="#905E43" transform="translate(0,34)">
+    <animateTransform attributeName="transform" type="translate" calcMode="discrete" dur="9s" repeatCount="indefinite"
+      values="0,34;0,64;0,94;0,124;0,154;0,184;0,94;0,124" keyTimes="0;0.0889;0.1778;0.2667;0.3556;0.4444;0.5333;0.6222"/>
+    <animate attributeName="fill" calcMode="discrete" dur="9s" repeatCount="indefinite"
+      values="#905E43;#cc241d" keyTimes="0;0.6222"/>
+  </path>
+
+  <!-- program (same text as the example slide) -->
+  <text class="code" x="46" y="40">n := <tspan class="kw">read</tspan>;</text>
+  <text class="code" x="46" y="70">p := <tspan class="kw">alloc</tspan> <tspan class="lit">1</tspan>;</text>
+  <text class="code" x="46" y="100"><tspan class="kw">while</tspan> <tspan class="lit">0</tspan> &lt; n <tspan class="kw">do</tspan></text>
+  <text class="code" x="46" y="130">  <tspan class="kw">store</tspan> p (<tspan class="kw">deref</tspan> p + n);</text>
+  <text class="code" x="46" y="160">  <tspan class="kw">print</tspan> (<tspan class="kw">deref</tspan> p);</text>
+  <text class="code" x="46" y="190">  n := n - <tspan class="lit">1</tspan></text>
+  <text class="label" x="46" y="222">oracle: read ↦ 3</text>
+
+  <!-- fuel counter: 7 → 0 -->
+  <line x1="410" y1="20" x2="410" y2="220" stroke="#d5c4a1" stroke-width="1.5"/>
+  <text class="label" x="520" y="52" text-anchor="middle">fuel</text>
+  <g text-anchor="middle">
+    <text class="fuel" x="520" y="125">7<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="1;0" keyTimes="0;0.0889"/></text>
+    <text class="fuel" x="520" y="125" opacity="0">6<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1;0" keyTimes="0;0.0889;0.1778"/></text>
+    <text class="fuel" x="520" y="125" opacity="0">5<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1;0" keyTimes="0;0.1778;0.2667"/></text>
+    <text class="fuel" x="520" y="125" opacity="0">4<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1;0" keyTimes="0;0.2667;0.3556"/></text>
+    <text class="fuel" x="520" y="125" opacity="0">3<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1;0" keyTimes="0;0.3556;0.4444"/></text>
+    <text class="fuel" x="520" y="125" opacity="0">2<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1;0" keyTimes="0;0.4444;0.5333"/></text>
+    <text class="fuel" x="520" y="125" opacity="0">1<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1;0" keyTimes="0;0.5333;0.6222"/></text>
+    <text class="fuel" x="520" y="125" opacity="0" style="fill:#cc241d">0<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1;0.25;1;0.25;1" keyTimes="0;0.6222;0.6889;0.7556;0.8222;0.8889"/></text>
+    <text class="msg" x="520" y="175" opacity="0">out of fuel!<animate attributeName="opacity" calcMode="discrete" dur="9s" repeatCount="indefinite" values="0;1" keyTimes="0;0.6222"/></text>
+  </g>
+</svg>
