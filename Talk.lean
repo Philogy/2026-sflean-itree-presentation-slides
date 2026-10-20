@@ -241,7 +241,9 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 * UB Explicit
 :::
 
-# Interaction Tree (iTree) Based Interpreters
+# Interaction Trees (iTrees)
+
+# iTree Based Interpreter
 
 ```lean -show
 namespace Interp
