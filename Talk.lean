@@ -247,6 +247,14 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 <img class="itree-diagram" src="itree-state.svg" alt="State diagram of the example program">
 ```
 
+# Interaction Trees (iTrees) (2)
+
+```html
+<img class="itree-diagram" src="itree-tree.svg" alt="The example program unfolded into an iTree">
+```
+
+Every answer picks a branch and the loop unrolls once per iteration: a finite program, an infinitely branching tree.
+
 # iTree Based Interpreter
 
 ```lean -show
