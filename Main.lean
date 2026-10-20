@@ -70,6 +70,12 @@ public def main : IO UInt32 := do
   let html := html.replace "Reveal.initialize({" "Reveal.initialize({\n        disableLayout: true,"
   -- Registered before `Reveal.initialize`, which runs the highlight plugin.
   let html := html.replace "Reveal.initialize({" ((← IO.FS.readFile ("static" / "toy-hljs.js")) ++ "Reveal.initialize({")
+  -- Inlined so `itree-steps.js` can dim parts of the diagrams.
+  let html ← ["itree-state.svg", "itree-tree.svg"].foldlM (init := html) fun html (svg : String) => do
+    return html.replace s!"<div class=\"itree-diagram\" data-svg=\"{svg}\"></div>"
+      s!"<div class=\"itree-diagram\">{← IO.FS.readFile ("static" / svg)}</div>"
+  -- After the reveal.js scripts, so `Reveal` exists.
+  let html := html.replace "</body>" s!"<script>{← IO.FS.readFile ("static" / "itree-steps.js")}</script></body>"
   -- Slides with attributes (e.g. a background colour) are left without the header.
   let html := html.replace "<section>" s!"<section>{slideHeader}"
   let html := html.replace "<div class=\"slides\">" s!"<div class=\"slides\">{titleSlide}"

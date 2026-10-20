@@ -1,61 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 470" role="img" aria-label="State diagram of the example program as an iTree">
+<svg xmlns="http://www.w3.org/2000/svg" id="itree-state" viewBox="0 0 1100 470" role="img" aria-label="State diagram of the example program as an iTree">
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="arrow-state" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="#905E43"/>
     </marker>
     <style>
-      .edge { stroke: #905E43; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .vis rect.box { fill: #905E43; }
-      .vis text { fill: #F7F1EA; font: 500 22px 'SF Mono', Menlo, Monaco, monospace; text-anchor: middle; dominant-baseline: central; }
-      .vis circle { fill: #EBD5C0; stroke: #905E43; stroke-width: 2.5; }
-      .vis text.q { fill: #905E43; font: 700 16px -apple-system, BlinkMacSystemFont, sans-serif; }
-      .tau { fill: #E9E0D7; stroke: #905E43; stroke-width: 3; }
-      .ret { fill: #EBD5C0; stroke: #905E43; stroke-width: 3; }
-      .ans { fill: #905E43; font: 600 22px 'SF Mono', Menlo, Monaco, monospace; text-anchor: middle; }
-      .cond { fill: #7c6f64; font: italic 400 19px -apple-system, BlinkMacSystemFont, sans-serif; text-anchor: middle; }
-      .legend { fill: #3c3836; font: 400 18px -apple-system, BlinkMacSystemFont, sans-serif; dominant-baseline: central; }
+      #itree-state .edge { stroke: #905E43; stroke-width: 2.5; fill: none; marker-end: url(#arrow-state); }
+      #itree-state .vis rect.box { fill: #905E43; }
+      #itree-state .vis text { fill: #F7F1EA; font: 500 22px 'SF Mono', Menlo, Monaco, monospace; text-anchor: middle; dominant-baseline: central; }
+      #itree-state .vis circle { fill: #EBD5C0; stroke: #905E43; stroke-width: 2.5; }
+      #itree-state .vis text.q { fill: #905E43; font: 700 16px -apple-system, BlinkMacSystemFont, sans-serif; }
+      #itree-state .tau { fill: #E9E0D7; stroke: #905E43; stroke-width: 3; }
+      #itree-state .ret { fill: #EBD5C0; stroke: #905E43; stroke-width: 3; }
+      #itree-state .ans { fill: #905E43; font: 600 22px 'SF Mono', Menlo, Monaco, monospace; text-anchor: middle; }
+      #itree-state .cond { fill: #7c6f64; font: italic 400 19px -apple-system, BlinkMacSystemFont, sans-serif; text-anchor: middle; }
+      #itree-state .legend { fill: #3c3836; font: 400 18px -apple-system, BlinkMacSystemFont, sans-serif; dominant-baseline: central; }
     </style>
   </defs>
 
   <!-- edges -->
-  <path class="edge" d="M18 90 L66 90"/>
-  <path class="edge" d="M200 90 L326 90"/>
-  <path class="edge" d="M490 90 L620 90"/>
-  <path class="edge" d="M656 90 L958 90"/>
-  <path class="edge" d="M630 103 Q 360 160 232 298"/>
-  <path class="edge" d="M300 330 L376 330"/>
-  <path class="edge" d="M600 330 L676 330"/>
-  <path class="edge" d="M830 330 L906 330"/>
-  <path class="edge" d="M980 302 Q 960 225 868 212"/>
-  <path class="edge" d="M836 200 Q 720 170 651 102"/>
+  <path data-s="read" class="edge" d="M18 90 L66 90"/>
+  <path data-s="read" class="edge" d="M200 90 L326 90"/>
+  <path data-s="alloc" class="edge" d="M490 90 L620 90"/>
+  <path data-s="exit" class="edge" d="M656 90 L958 90"/>
+  <path data-s="cond" class="edge" d="M630 103 Q 360 160 232 298"/>
+  <path data-s="body" class="edge" d="M300 330 L376 330"/>
+  <path data-s="body" class="edge" d="M600 330 L676 330"/>
+  <path data-s="body" class="edge" d="M830 330 L906 330"/>
+  <path data-s="body" class="edge" d="M980 302 Q 960 225 868 212"/>
+  <path data-s="body" class="edge" d="M836 200 Q 720 170 651 102"/>
 
   <!-- answers (out of vis nodes) and conditions (out of silent states) -->
-  <text class="ans" x="263" y="78">n</text>
-  <text class="ans" x="555" y="78">p</text>
-  <text class="cond" x="805" y="78">n = 0</text>
-  <text class="cond" x="300" y="178">n &gt; 0</text>
-  <text class="ans" x="338" y="318">v</text>
-  <text class="ans" x="638" y="318">()</text>
-  <text class="ans" x="868" y="318">w</text>
-  <text class="ans" x="1000" y="272">()</text>
-  <text class="cond" x="730" y="205">n := n − 1</text>
-  <text class="cond" x="640" y="58">0 &lt; n ?</text>
+  <text data-s="read" class="ans" x="263" y="78">n</text>
+  <text data-s="alloc" class="ans" x="555" y="78">p</text>
+  <text data-s="exit" class="cond" x="805" y="78">n = 0</text>
+  <text data-s="cond" class="cond" x="300" y="178">n &gt; 0</text>
+  <text data-s="body" class="ans" x="338" y="318">v</text>
+  <text data-s="body" class="ans" x="638" y="318">()</text>
+  <text data-s="body" class="ans" x="868" y="318">w</text>
+  <text data-s="body" class="ans" x="1000" y="272">()</text>
+  <text data-s="body" class="cond" x="730" y="205">n := n − 1</text>
+  <text data-s="cond exit" class="cond" x="640" y="58">0 &lt; n ?</text>
 
   <!-- vis nodes -->
-  <g class="vis"><rect class="box" x="70" y="63" width="130" height="54" rx="14"/><text x="135" y="90">read</text><circle cx="200" cy="63" r="12"/><text class="q" x="200" y="64">?</text></g>
-  <g class="vis"><rect class="box" x="330" y="63" width="160" height="54" rx="14"/><text x="410" y="90">alloc 1</text><circle cx="490" cy="63" r="12"/><text class="q" x="490" y="64">?</text></g>
-  <g class="vis"><rect class="box" x="150" y="303" width="150" height="54" rx="14"/><text x="225" y="330">deref p</text><circle cx="300" cy="303" r="12"/><text class="q" x="300" y="304">?</text></g>
-  <g class="vis"><rect class="box" x="380" y="303" width="220" height="54" rx="14"/><text x="490" y="330">write p (v+n)</text><circle cx="600" cy="303" r="12"/><text class="q" x="600" y="304">?</text></g>
-  <g class="vis"><rect class="box" x="680" y="303" width="150" height="54" rx="14"/><text x="755" y="330">deref p</text><circle cx="830" cy="303" r="12"/><text class="q" x="830" y="304">?</text></g>
-  <g class="vis"><rect class="box" x="910" y="303" width="140" height="54" rx="14"/><text x="980" y="330">print w</text><circle cx="1050" cy="303" r="12"/><text class="q" x="1050" y="304">?</text></g>
+  <g data-s="read" class="vis"><rect class="box" x="70" y="63" width="130" height="54" rx="14"/><text x="135" y="90">read</text><circle cx="200" cy="63" r="12"/><text class="q" x="200" y="64">?</text></g>
+  <g data-s="alloc" class="vis"><rect class="box" x="330" y="63" width="160" height="54" rx="14"/><text x="410" y="90">alloc 1</text><circle cx="490" cy="63" r="12"/><text class="q" x="490" y="64">?</text></g>
+  <g data-s="body" class="vis"><rect class="box" x="150" y="303" width="150" height="54" rx="14"/><text x="225" y="330">deref p</text><circle cx="300" cy="303" r="12"/><text class="q" x="300" y="304">?</text></g>
+  <g data-s="body" class="vis"><rect class="box" x="380" y="303" width="220" height="54" rx="14"/><text x="490" y="330">store p (v+n)</text><circle cx="600" cy="303" r="12"/><text class="q" x="600" y="304">?</text></g>
+  <g data-s="body" class="vis"><rect class="box" x="680" y="303" width="150" height="54" rx="14"/><text x="755" y="330">deref p</text><circle cx="830" cy="303" r="12"/><text class="q" x="830" y="304">?</text></g>
+  <g data-s="body" class="vis"><rect class="box" x="910" y="303" width="140" height="54" rx="14"/><text x="980" y="330">print w</text><circle cx="1050" cy="303" r="12"/><text class="q" x="1050" y="304">?</text></g>
 
   <!-- silent states -->
-  <circle class="tau" cx="640" cy="90" r="14"/>
-  <circle class="tau" cx="852" cy="208" r="11"/>
+  <circle data-s="cond exit" class="tau" cx="640" cy="90" r="14"/>
+  <circle data-s="body" class="tau" cx="852" cy="208" r="11"/>
 
   <!-- ret leaf -->
-  <rect class="ret" x="962" y="73" width="34" height="34" rx="4"/>
-  <text class="cond" x="979" y="137">ret</text>
+  <rect data-s="exit" class="ret" x="962" y="73" width="34" height="34" rx="4"/>
+  <text data-s="exit" class="cond" x="979" y="137">ret</text>
 
   <!-- legend -->
   <g transform="translate(150 430)">

@@ -148,7 +148,7 @@ def exec (o : Oracle) (σ : State) : Fuel → Program → Trace × Option Error
 * Nondeterminism and effect results require fixed implementations upfront
 
 ```html
-<img class="fuel-anim" style="display:block;margin:1em auto 0" src="fuel-anim.svg" alt="The example program running until it is out of fuel">
+<img class="fuel-anim fragment" style="display:block;margin:1em auto 0" src="fuel-anim.svg" alt="The example program running until it is out of fuel">
 ```
 
 # Relational Big-Step
@@ -248,13 +248,31 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 # Interaction Trees (iTrees)
 
 ```html
-<img class="itree-diagram" src="itree-state.svg" alt="State diagram of the example program">
+<div class="stepped">
+<pre class="big-code"><code class="language-toy" data-lines="read|alloc|cond exit|body|body|body">n := read;
+p := alloc 1;
+while 0 < n do
+  store p (deref p + n);
+  print (deref p);
+  n := n - 1</code></pre>
+<div class="itree-diagram" data-svg="itree-state.svg"></div>
+<span class="fragment step" data-step="read"></span><span class="fragment step" data-step="alloc"></span><span class="fragment step" data-step="cond"></span><span class="fragment step" data-step="body"></span><span class="fragment step" data-step="exit"></span>
+</div>
 ```
 
 # Interaction Trees (iTrees) (2)
 
 ```html
-<img class="itree-diagram" src="itree-tree.svg" alt="The example program unfolded into an iTree">
+<div class="stepped">
+<pre class="big-code"><code class="language-toy" data-lines="read|alloc|cond exit|body|body|body">n := read;
+p := alloc 1;
+while 0 < n do
+  store p (deref p + n);
+  print (deref p);
+  n := n - 1</code></pre>
+<div class="itree-diagram" data-svg="itree-tree.svg"></div>
+<span class="fragment step" data-step="read"></span><span class="fragment step" data-step="alloc"></span><span class="fragment step" data-step="cond"></span><span class="fragment step" data-step="body"></span><span class="fragment step" data-step="exit"></span>
+</div>
 ```
 
 Every answer picks a branch and the loop unrolls once per iteration: a finite program, an infinitely branching tree.

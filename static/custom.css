@@ -562,3 +562,19 @@
   max-width: 92%;
   max-height: 68vh;
 }
+
+/* ── Click-stepped code + diagram (itree-steps.js) ── */
+.reveal section .stepped {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5vw;
+  align-items: center;
+  margin-top: 6vh;
+}
+.reveal .slides .stepped pre.big-code { margin: 0; width: auto; max-width: none; font-size: 0.62em; }
+.reveal section .stepped pre code { overflow: visible; max-height: none; width: max-content; }
+.reveal section .stepped .itree-diagram svg { display: block; width: 100%; height: auto; max-height: 62vh; }
+.reveal section .stepped .ln { display: block; padding: 0 0.4em; border-radius: 4px; transition: opacity .25s, background-color .25s; }
+.reveal section .stepped [data-s] { transition: opacity .25s; }
+.reveal section .stepped .step-dim { opacity: 0.18; }
+.reveal section .stepped .ln.step-on { background-color: #EBD5C0; }
