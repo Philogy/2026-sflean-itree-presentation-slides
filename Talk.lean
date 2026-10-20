@@ -243,6 +243,10 @@ inductive Steps : Cfg → Trace → Cfg → Prop          -- collect the labels
 
 # Interaction Trees (iTrees)
 
+```html
+<img class="itree-diagram" src="itree-state.svg" alt="State diagram of the example program">
+```
+
 # iTree Based Interpreter
 
 ```lean -show
