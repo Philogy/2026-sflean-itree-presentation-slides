@@ -147,6 +147,10 @@ def exec (o : Oracle) (σ : State) : Fuel → Program → Trace × Option Error
 * Nontermination implicit (no fuel value that doesn't error)
 * Nondeterminism and effect results require fixed implementations upfront
 
+```html
+<img class="fuel-anim" style="display:block;margin:1em auto 0" src="fuel-anim.svg" alt="The example program running until it is out of fuel">
+```
+
 # Relational Big-Step
 
 :::class "big-code"
