@@ -60,7 +60,8 @@ public def main : IO UInt32 := do
   let rc ← slidesMain (config := config) (doc := %doc Talk)
   let out := config.outputDir
   IO.FS.writeFile (out / "custom.css") (← IO.FS.readFile ("static" / "custom.css"))
-  IO.FS.writeFile (out / "itree-logo.svg") (← IO.FS.readFile ("static" / "itree-logo.svg"))
+  for svg in ["itree-logo.svg", "itree-tree.svg"] do
+    IO.FS.writeFile (out / svg) (← IO.FS.readFile ("static" / svg))
   let htmlPath := out / "index.html"
   let html ← IO.FS.readFile htmlPath
   -- custom.css must come after the bundled stylesheets, which `extraCss` doesn't guarantee.

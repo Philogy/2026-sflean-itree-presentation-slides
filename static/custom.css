@@ -554,3 +554,11 @@
   font-size: 0.85em;
   color: #7c6f64;
 }
+
+/* ── iTree diagrams (state diagram / tree) ── */
+.reveal section img.itree-diagram {
+  display: block;
+  margin: 4vh auto 0;
+  max-width: 92%;
+  max-height: 68vh;
+}
